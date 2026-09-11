@@ -66,7 +66,14 @@ function tracksIPC(tracks: TrackFixture[]): ArrayBuffer {
 }
 
 function pointsIPC(
-  points: Array<{ mode: 'air' | 'sea'; entityId: string; label: string; lon: number; lat: number; t: number }>,
+  points: Array<{
+    mode: 'air' | 'sea';
+    entityId: string;
+    label: string;
+    lon: number;
+    lat: number;
+    t: number;
+  }>,
 ): ArrayBuffer {
   const table = new Table({
     source: vectorFromArray(

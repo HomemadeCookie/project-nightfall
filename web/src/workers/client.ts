@@ -21,12 +21,25 @@ function api(): Comlink.Remote<DecodeApi> {
   return remote;
 }
 
+/**
+ * Resolve an artifact URL against the page before it crosses into the worker.
+ *
+ * A worker resolves a relative URL against its own script URL, not the document's, so the
+ * manifest's relative paths would be fetched from wherever the bundler happened to emit the
+ * worker. That request succeeds — a static host answers a miss with its own HTML — and the
+ * failure only surfaces as an unintelligible complaint from the Arrow reader. Every URL enters
+ * the worker through this module, so resolving here covers all of them.
+ */
+function fromPage(url: string): string {
+  return new URL(url, document.baseURI).href;
+}
+
 export async function loadTracks(url: string): Promise<TracksBundle> {
-  return assertKind(await api().loadTracks(url), 'tracks') as TracksBundle;
+  return assertKind(await api().loadTracks(fromPage(url)), 'tracks') as TracksBundle;
 }
 
 export async function loadPoints(url: string): Promise<PointsBundle> {
-  return assertKind(await api().loadPoints(url), 'points') as PointsBundle;
+  return assertKind(await api().loadPoints(fromPage(url)), 'points') as PointsBundle;
 }
 
 function assertKind(bundle: Bundle, kind: Bundle['kind']): Bundle {

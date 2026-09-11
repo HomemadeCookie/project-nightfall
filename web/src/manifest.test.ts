@@ -72,7 +72,9 @@ describe('parseManifest', () => {
   });
 
   it('rejects a freshness value it does not know how to present', () => {
-    expect(() => parseManifest(manifest({ layers: [layer({ freshness: 'probably-fine' })] }))).toThrow();
+    expect(() =>
+      parseManifest(manifest({ layers: [layer({ freshness: 'probably-fine' })] })),
+    ).toThrow();
   });
 });
 

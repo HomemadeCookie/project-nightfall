@@ -80,17 +80,30 @@ export function basemapStyle(pmtilesUrl: string): StyleSpecification {
   };
 }
 
+/** `PMTiles` followed by the spec version, the first bytes of a v3 archive header. */
+const PMTILES_MAGIC = 'PMTiles';
+const PMTILES_VERSION = 3;
+
 /**
- * Whether the tile archive is actually there.
+ * Whether the tile archive is actually there, and is actually an archive.
  *
  * A range request rather than a HEAD, because that is what PMTiles itself needs from the host:
  * a server that answers 200 to HEAD but ignores `Range` would fail later, in the middle of
  * rendering, instead of here.
+ *
+ * The bytes are then inspected rather than assumed. A static host answers a missing file with
+ * a page, so a successful response proves reachability and nothing about content — and handing
+ * that page to the tile reader produces a complaint about magic numbers from inside a library,
+ * long after the point where the app could have said the basemap simply is not published yet.
  */
 export async function basemapAvailable(url: string): Promise<boolean> {
   try {
     const response = await fetch(url, { headers: { Range: 'bytes=0-15' } });
-    return response.status === 206;
+    if (response.status !== 206) return false;
+    const head = new Uint8Array(await response.arrayBuffer());
+    if (head.length < PMTILES_MAGIC.length + 1) return false;
+    const magic = String.fromCharCode(...head.subarray(0, PMTILES_MAGIC.length));
+    return magic === PMTILES_MAGIC && head[PMTILES_MAGIC.length] === PMTILES_VERSION;
   } catch {
     return false;
   }
