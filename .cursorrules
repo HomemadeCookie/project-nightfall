@@ -33,7 +33,57 @@ session and including on tasks that feel trivial.
 
 ---
 
-## 1. CURRENT REPOSITORY STATE — no application code
+## 1. THE ZERO-COST CONSTRAINT — outranks every other rule here
+
+**The owner must never be charged for this project. Target spend is $0.00, permanently.** This is
+the highest-priority constraint in the repository. It outranks performance, developer
+convenience, feature completeness, and every other rule in this file. When it conflicts with
+something else, it wins, and you say so rather than quietly trading it away.
+
+You MUST NEVER, under any circumstances:
+
+* recommend, configure, scaffold, or add a dependency on a service that **requires a payment
+  method** to function — however generous its free tier, and including free trials, promotional
+  credits, and "free for now" products;
+* introduce a service with a **metered or usage-based billing relationship** where exceeding an
+  allowance produces a charge instead of a refusal;
+* introduce **long-running compute**: no VPS, no always-on container, no managed database
+  instance, no serverless function with a persistent connection, no hosted queue or cache.
+  Every process MUST be an ephemeral job that starts, works, writes artifacts, and exits;
+* use **larger GitHub-hosted runners**. They are billed even on public repositories. Standard
+  runners only;
+* register a **custom domain**, or add any service billed per seat, per month, or per domain;
+* raise, disable, or work around a quota assertion in CI to make a change pass.
+
+Approved services — this list is exhaustive, and adding to it requires an approved `README.md`
+change plus explicit owner sign-off:
+
+| Purpose | Service | Why it cannot bill |
+| --- | --- | --- |
+| Compute, scheduling, CI | GitHub Actions (public repo, standard runners) | Free and unlimited; blocks on quota when no payment method is on file |
+| App + serving-set hosting | GitHub Pages | Free static hosting, no billing relationship |
+| Data archive | Hugging Face Dataset repo | Free public dataset hosting, no payment method |
+
+**Cloudflare R2 is explicitly rejected**, despite being the conventional choice for PMTiles. It
+requires a payment method and meters operations. Do not reintroduce it. The same reasoning
+rejects Supabase, Neon, Railway, Fly.io, Vercel, Grafana Cloud, and any managed Postgres.
+
+If a task genuinely cannot be done within these limits, the correct response is to **say so
+plainly and stop** — describe what it would cost and let the owner decide. NEVER assume a small
+recurring cost is acceptable, and NEVER present one as a minor implementation detail. A
+previous revision of this architecture included a ~€4/month VPS; it was removed for this reason.
+Do not let it, or anything like it, come back.
+
+Capability limits this constraint imposes, which you MUST NOT try to engineer around:
+
+* No live or streaming data. Everything is sampled on a schedule.
+* No persistent WebSocket. AIS is collected in bounded sampling windows.
+* No on-demand routing. Route and isochrone answers are pre-computed at bake time.
+* Browser-reachable serving set is capped at **1 GB total**.
+
+---
+
+## 2. CURRENT REPOSITORY STATE — no application code
 
 This repository is intentionally **specification-only**. It contains `README.md` and
 `.cursorrules` and nothing else.
@@ -47,15 +97,16 @@ This repository is intentionally **specification-only**. It contains `README.md`
 
 ---
 
-## 2. THE SEVEN INVARIANTS — never violate, never route around
+## 3. THE INVARIANTS — never violate, never route around
 
 Restated from `README.md` § System Architecture. Each one is the foundation of a documented risk
-mitigation; breaking one silently re-opens that risk.
+mitigation; breaking one silently re-opens that risk. Invariant 0 is Section 1 above and
+outranks the rest.
 
 1. **The browser NEVER calls a third-party API.** No API key, token, or upstream hostname may
    appear in client code or a client bundle. AISStream forbids browser connections outright;
    every other source follows the same rule for uniform enforcement. If client code needs
-   upstream data, it reads a baked artifact or calls our own FastAPI service.
+   upstream data, it reads a baked artifact — there is no API to call.
 2. **Raw data is immutable.** Stage 1 output under `raw/` is append-only. NEVER write code that
    edits, overwrites, or deletes a raw object. Corrections are new objects.
 3. **The read path NEVER depends on upstream liveness.** No user-facing request may block on a
@@ -71,10 +122,12 @@ mitigation; breaking one silently re-opens that risk.
    UTC. Conversion happens in one tested boundary layer. NEVER use naive datetimes.
 7. **Every rendered number is traceable** to a source artifact, its `observed_at`, and the
    pipeline run that produced it. A number with no provenance does not ship.
+8. **No process outlives the job that started it.** There is no server, no database, and no API
+   in this system. If a design needs one, the design is wrong — see Section 1.
 
 ---
 
-## 3. TECHNOLOGY STACK — fixed, pinned, not open for substitution
+## 4. TECHNOLOGY STACK — fixed, pinned, not open for substitution
 
 Use exactly these. Introducing any library not listed, or swapping a listed one, requires an
 approved `README.md` change first. "Equivalent", "more popular", "what I know better", and
@@ -86,7 +139,8 @@ approved `README.md` change first. "Equivalent", "more popular", "what I know be
 * MapLibre GL JS 6 for the basemap. deck.gl 9.4 for every overlay, attached via
   `@deck.gl/maplibre`.
 * Apache Arrow 21 for data transport. `h3-js` 4 for the aggregation grid. `pmtiles` 4 for the
-  tile protocol. DuckDB-WASM for in-browser SQL.
+  tile protocol. DuckDB-WASM for in-browser SQL — this is the query layer, not an optimisation.
+  Filtering and aggregation that would conventionally live in a backend MUST run here.
 * Zustand for UI state. TanStack Query for artifact fetching. Observable Plot for charts.
 * Comlink for Web Worker boundaries.
 
@@ -100,21 +154,25 @@ approved `README.md` change first. "Equivalent", "more popular", "what I know be
 * NEVER add a CSS-in-JS runtime, Redux, or an ORM to the frontend.
 * NEVER pass raw feed data to a layer. Layers consume baked artifacts only.
 
-### Backend
+### Compute — batch jobs only, there is no backend
 
 * Python 3.13. `uv` for dependency management and locking.
-* FastAPI for the read API — thin, stateless, and limited to Valhalla routing/isochrones and
-  per-site ad-hoc queries. Business logic does NOT live here.
-* DuckDB 1.5 as the analytical engine. All transformations are SQL models in `dbt-duckdb`.
-* `httpx` (async) for upstream calls. Pydantic v2 for every external boundary.
-* `xarray` + `rioxarray` for raster work. `geopandas` 1.x only for offline/bake-time
-  geometry work, never in a request path.
-* Valhalla (self-hosted, Docker) for all routing, isochrones, and matrix queries.
+* All Python runs inside ephemeral GitHub Actions jobs. NEVER write a web server, a daemon, a
+  long-poll loop, or anything that expects to still be running a minute later.
+* DuckDB 1.5 is the entire engine, with the `spatial`, `h3` (community), and `httpfs`
+  extensions. All transformations are SQL models in `dbt-duckdb`.
+* `httpx` for upstream calls. Pydantic v2 for every external boundary.
+* `xarray` + `rioxarray` for raster work. `geopandas` 1.x for bake-time geometry work.
+* Valhalla for routing, isochrones, and matrix queries — built as a throwaway container inside
+  the bake job, queried there, and discarded. NEVER deploy it as a service.
 
-**Backend prohibitions:**
+**Compute prohibitions:**
 
-* NEVER use Django, Flask, SQLAlchemy ORM models, or Celery. Raw SQL and Timescale/DuckDB do
-  the work; GitHub Actions cron is the scheduler.
+* NEVER add FastAPI, Django, Flask, Litestar, or any other web framework. There is no API
+  tier. If the browser needs to ask a question, either bake the answer or answer it in
+  DuckDB-WASM.
+* NEVER use SQLAlchemy ORM models or Celery. Raw SQL does the work; GitHub Actions cron is the
+  scheduler.
 * NEVER use pandas where Polars or DuckDB is applicable; NEVER use pandas in the bake stage.
 * NEVER use OSRM or GraphHopper. Valhalla is chosen for per-request truck costing and native
   isochrones off one graph.
@@ -123,32 +181,43 @@ approved `README.md` change first. "Equivalent", "more popular", "what I know be
   language phrasing of an already-computed, already-sourced number is the only permitted use,
   and it must not alter the value.
 
-### Data & Storage
+### Data & Storage — files, not a database
 
-* Hot: PostgreSQL 18 + PostGIS 3.6 + TimescaleDB 2.29. Time-series tables MUST be hypertables
-  with an explicit compression policy and an explicit retention policy. UI-facing rollups MUST
-  be continuous aggregates, not ad-hoc `GROUP BY` over raw positions.
-* Cold/serving: Cloudflare R2. GeoParquet for analysis, PMTiles for tiles (vector and raster),
-  COG for source rasters, Arrow IPC for animation frames.
-* Every spatial table MUST have a GiST index. Every hypertable MUST declare its partition column.
+* There is **no database server**. GeoParquet on object storage is the store; DuckDB is the
+  engine. NEVER introduce PostgreSQL, PostGIS, TimescaleDB, SQLite-as-a-service, MongoDB,
+  Elasticsearch, Redis, or Kafka. Spatial predicates come from DuckDB's `spatial` extension and
+  time bucketing from `time_bucket`.
+* Four artifact formats, and no others: GeoParquet (analysis and browser range-queries),
+  PMTiles (vector and raster tiles), COG (source rasters), Arrow IPC (animation frames).
+* Curated GeoParquet MUST be partitioned by H3 cell and time bucket, and schema-versioned.
 * NEVER store geometry as WKT strings, lat/lon float pairs in JSON, or a serialised blob.
-* NEVER introduce MongoDB, Elasticsearch, Redis, Kafka, or a second database engine.
 * NEVER commit a data file to git. Not a shapefile, not a GeoJSON fixture over 100 KB, not a
-  Parquet file, not a `.pmtiles`. Data lives in R2.
+  Parquet file, not a `.pmtiles`. The serving set is published via `upload-pages-artifact` so
+  it never enters git history; the archive lives in the Hugging Face dataset repo.
+* Any host for browser-read artifacts MUST return `206 Partial Content` AND send
+  `Access-Control-Allow-Origin`. Verify both before adopting one. GitHub Releases is
+  disqualified on exactly this basis: range requests work, but it sends no CORS header and its
+  URLs are short-lived signed redirects.
 
 ### Infrastructure
 
-* Cloudflare Pages (frontend) + R2 behind a **cached custom domain** — NEVER the uncached
-  `r2.dev` URL, which bypasses the CDN and burns the Class B operation budget.
-* GitHub Actions for cron, ETL, and CI. Docker Compose on one non-hyperscaler VPS for Postgres,
-  Valhalla, and the AIS collector.
-* NEVER add Kubernetes, Terraform, a service mesh, or a second cloud provider.
-* NEVER move the ADS-B or AIS collector onto a hyperscaler IP or a GitHub-hosted runner.
-  OpenSky documents blocking hyperscaler ranges; the VPS exists specifically for this.
+* GitHub Actions (cron, ETL, CI) + GitHub Pages (app and serving set) + Hugging Face Dataset
+  (archive). That is the whole infrastructure. See Section 1 for why, and for what is banned.
+* Scheduled workflows MUST declare `timeout-minutes` and a `concurrency` group.
+* A keepalive workflow MUST call `gh workflow enable` on every scheduled workflow weekly.
+  Public-repo scheduled workflows are auto-disabled after 60 days of repository inactivity, and
+  that silently stops all data collection.
+* The repository MUST stay public — Actions is only free and unlimited there, and ODbL
+  share-alike on derived OSM and adsb.lol geometry points the same way.
+* NEVER add Kubernetes, Terraform, Docker Compose as a deployment target, a service mesh, or a
+  second cloud provider.
+* OpenSky documents blocking hyperscaler IP ranges and Actions runners are Azure-hosted, so
+  adsb.lol is the primary flight source. If OpenSky blocks the runner, record a source outage;
+  NEVER respond by provisioning a non-hyperscaler host, which would breach Section 1.
 
 ---
 
-## 4. DATA SOURCE RULES
+## 5. DATA SOURCE RULES
 
 The approved source list is the table in `README.md` § Data Sources. Adding a source requires an
 approved README change.
@@ -166,16 +235,23 @@ approved README change.
   NEVER retry a 4xx other than 429; trip a circuit breaker rather than hammering.
 * **NEVER call a live upstream API from a test or from CI.** Tests replay recorded fixtures
   from `raw/`. A test that needs network access is a broken test.
-* NEVER pay for data, and NEVER use a paid tier, trial, or credit-card-gated endpoint — this is
-  an explicit scope exclusion, not a budget preference.
+* NEVER pay for data, and NEVER use a paid tier, trial, or credit-card-gated endpoint. This is
+  both an explicit scope exclusion and a Section 1 violation.
 * NEVER silently interpolate across a coverage gap. Absence of data is rendered as absence of
-  data, distinct from zero activity.
+  data, distinct from zero activity. AIS in particular arrives as **sampling windows**, so a
+  missing vessel may simply have moved between samples — NEVER join sampled positions into a
+  continuous voyage or present them as one.
+* AIS sampling windows MUST be scheduled at varying times of day. A fixed offset aliases
+  against tidal, shift, and diurnal patterns and biases every downstream measure.
+* Every aggregate MUST carry an observation count and a sampled-duration fraction alongside its
+  value, and insights MUST be suppressed below the documented threshold rather than
+  extrapolated.
 * Treat AISStream's schema as unstable (it is in beta): parse defensively, validate with
   Pydantic, and never assume a field exists.
 
 ---
 
-## 5. PERFORMANCE RULES — the frame budget is a hard limit
+## 6. PERFORMANCE RULES — the frame budget is a hard limit
 
 The single largest product risk is the map crashing the browser. These are enforced limits, not
 targets.
@@ -198,13 +274,16 @@ targets.
 * A capability probe MUST run on load and degrade to a static, non-animated mode on low-memory
   or software-rendered devices. A WebGL context-loss handler MUST rebuild rather than
   white-screen.
+* **The serving set MUST stay under 1 GB in total**, which is GitHub Pages' hard ceiling. The
+  bake job asserts this with headroom and fails the build otherwise. Growth belongs in the
+  Hugging Face archive, not against the Pages limit.
 * The CI performance gate (p95 frame time ≤32 ms, JS heap ≤800 MB over a scripted
-  pan/zoom/animate session) MUST NOT be skipped, weakened, or marked `continue-on-error` to get
-  a change merged.
+  pan/zoom/animate session) and the size assertion MUST NOT be skipped, weakened, or marked
+  `continue-on-error` to get a change merged.
 
 ---
 
-## 6. INSIGHT GENERATION RULES
+## 7. INSIGHT GENERATION RULES
 
 * Insights MUST be deterministic and reproducible: same inputs plus same pinned code yields
   identical output. NEVER introduce unseeded randomness.
@@ -219,7 +298,7 @@ targets.
 
 ---
 
-## 7. CODE QUALITY RULES
+## 8. CODE QUALITY RULES
 
 * TypeScript: `strict` on, `any` forbidden (use `unknown` and narrow), Biome for lint and
   format.
@@ -239,7 +318,7 @@ targets.
 
 ---
 
-## 8. WHEN YOU ARE UNSURE
+## 9. WHEN YOU ARE UNSURE
 
 Stop and ask. Do not:
 
@@ -247,6 +326,12 @@ Stop and ask. Do not:
 * add a dependency to work around a rule in this file;
 * weaken a test, budget, or type check to make a change pass;
 * mark a deviation in a code comment and proceed;
-* re-litigate a decision in `README.md` mid-task.
+* re-litigate a decision in `README.md` mid-task;
+* introduce anything that could produce a charge, however small, and mention it in passing.
 
 Propose the `README.md` amendment, get agreement, then implement.
+
+**On cost specifically:** if the only way you can see to accomplish a task involves a paid
+service, a card on file, or an always-on process, do not build it and do not build a degraded
+version silently. Say what is blocked, say what it would cost, and stop. The owner has asked
+for $0.00 and expects to be told when that is the binding constraint.
