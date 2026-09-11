@@ -19,10 +19,17 @@ Before writing, editing, scaffolding, or reviewing a single line of code, you MU
 2. **State, in one or two sentences, which section of `README.md` authorises the work** you are
    about to do — the deliverable, the milestone phase, and the stack entries involved.
 3. **Check the request against `README.md` § Out-of-Scope.** If the request falls in scope
-   exclusions (paid data of any kind, census validation, accuracy guarantees, LLM-made business
-   decisions, SAR processing, customer interviews, a mobile app), you MUST refuse and say why.
-4. **Check the request against `README.md` § Milestones.** If it belongs to a later phase than
+   exclusions (any expenditure, paid data of any kind, SAR processing, customer interviews, a
+   mobile app), you MUST refuse and say why.
+4. **Check the request against `README.md` § Deferred.** Deferred items are out of scope for
+   the initial versions but are planned for later, so the correct response is neither to build
+   them nor to design them out. Refuse to implement, and do not introduce an abstraction that
+   would make the later addition impossible.
+5. **Check the request against `README.md` § Milestones.** If it belongs to a later phase than
    the one in progress, say so and get explicit confirmation before proceeding.
+6. **If the work produces or changes a published number, identify its accuracy specification**
+   and how it is verified. The project guarantees accuracy (§ Accuracy and Validation); work
+   that adds an unverified figure is incomplete, not merely untested.
 
 If `README.md` does not cover what the task needs, the correct action is to **propose a README
 change first and get it approved** — not to invent a decision in code. Architecture is decided
@@ -124,6 +131,9 @@ outranks the rest.
    pipeline run that produced it. A number with no provenance does not ship.
 8. **No process outlives the job that started it.** There is no server, no database, and no API
    in this system. If a design needs one, the design is wrong — see Section 1.
+9. **No insight ships without a current accuracy score.** Verification is a gating stage with
+   the power to withhold. A breached or stale bound means the insight is withheld and labelled,
+   never served unmarked. See Section 7.
 
 ---
 
@@ -159,6 +169,9 @@ approved `README.md` change first. "Equivalent", "more popular", "what I know be
 * Python 3.13. `uv` for dependency management and locking.
 * All Python runs inside ephemeral GitHub Actions jobs. NEVER write a web server, a daemon, a
   long-poll loop, or anything that expects to still be running a minute later.
+* Four job families, matching the pipeline stages: **collect**, **transform**, **verify**, and
+  **bake**. Verify gates bake; NEVER let a bake job publish an insight that verify has not
+  scored.
 * DuckDB 1.5 is the entire engine, with the `spatial`, `h3` (community), and `httpfs`
   extensions. All transformations are SQL models in `dbt-duckdb`.
 * `httpx` for upstream calls. Pydantic v2 for every external boundary.
@@ -176,10 +189,14 @@ approved `README.md` change first. "Equivalent", "more popular", "what I know be
 * NEVER use pandas where Polars or DuckDB is applicable; NEVER use pandas in the bake stage.
 * NEVER use OSRM or GraphHopper. Valhalla is chosen for per-request truck costing and native
   isochrones off one graph.
-* NEVER put an LLM call in a path that produces a number, score, ranking, or recommendation.
-  Per `README.md` § Out-of-Scope, LLMs do not make or influence business decisions. Natural
-  language phrasing of an already-computed, already-sourced number is the only permitted use,
-  and it must not alter the value.
+* **In the initial versions, NEVER put an LLM call in a path that produces, influences, ranks,
+  or adjusts a number, score, or recommendation.** Natural-language phrasing of an
+  already-computed, already-sourced figure is the only permitted use, and it must not alter the
+  value. This is a **deferred** item, not a permanent exclusion (`README.md` § Deferred): a
+  later version may add LLM-assisted analysis. So do not build it now, and equally do not
+  hard-wire assumptions that would block it — keep the insight interface capable of carrying an
+  additional producer with its own accuracy specification and human sign-off. Adding it
+  requires an approved README change; it is never an incremental refactor.
 
 ### Data & Storage — files, not a database
 
@@ -188,7 +205,12 @@ approved `README.md` change first. "Equivalent", "more popular", "what I know be
   Elasticsearch, Redis, or Kafka. Spatial predicates come from DuckDB's `spatial` extension and
   time bucketing from `time_bucket`.
 * Four artifact formats, and no others: GeoParquet (analysis and browser range-queries),
-  PMTiles (vector and raster tiles), COG (source rasters), Arrow IPC (animation frames).
+  PMTiles (vector and raster tiles), COG (source rasters), Arrow IPC (animation frames). Plus
+  the JSON sidecars the manifest references: `insights.json`, `accuracy.json`,
+  `pipeline_health.json`.
+* Archived forecasts are ground truth infrastructure, not history for its own sake. NEVER add a
+  retention or compaction step that discards a forecast still needed to verify against its
+  valid time.
 * Curated GeoParquet MUST be partitioned by H3 cell and time bucket, and schema-versioned.
 * NEVER store geometry as WKT strings, lat/lon float pairs in JSON, or a serialised blob.
 * NEVER commit a data file to git. Not a shapefile, not a GeoJSON fixture over 100 KB, not a
@@ -283,18 +305,43 @@ targets.
 
 ---
 
-## 7. INSIGHT GENERATION RULES
+## 7. INSIGHT AND ACCURACY RULES
+
+The project **guarantees accuracy** (`README.md` § Accuracy and Validation). That guarantee is
+enforced by code, so these rules are not style preferences.
 
 * Insights MUST be deterministic and reproducible: same inputs plus same pinned code yields
   identical output. NEVER introduce unseeded randomness.
 * Every insight output MUST carry its input artifact versions, its parameters, and a confidence
   band.
+* **Every insight MUST have a published accuracy specification** — a stated error bound, the
+  ground truth it is scored against, the naive baseline it must beat, and the minimum sample
+  size the bound requires. An insight without one is unfinished and MUST NOT ship.
+* **Bounds are measured, never asserted.** Establish them by backtesting against archived
+  history. NEVER write a bound you have not computed, and NEVER hardcode a plausible-looking
+  error figure.
+* Verification is a **gating stage**, not a report. An insight whose bound is breached, or whose
+  verification is stale, MUST be withheld and labelled. NEVER serve it unmarked, and NEVER let
+  an insight reach the serving set by default when its score is missing — fail closed.
+* Loosening a published bound requires the same review as fixing a breach. NEVER widen a bound
+  to make verification pass.
+* Forecast verification MUST compare a forecast against the observation for the **same valid
+  time**, using the forecast as originally issued. Archive forecasts at issue time; NEVER score
+  against a revised or latest-run value.
+* Gridded population MUST be validated against PSA census by **zonal aggregation up to the
+  census administrative unit**, at the level the census publishes, with the unit vintage
+  pinned. NEVER point-sample a grid against a census aggregate — that measures the modifiable
+  areal unit problem and mislabels it as error.
 * An insight MUST be suppressed below its documented observation threshold rather than
-  extrapolated. Sparse data is reported as sparse.
-* Coverage is a first-class column: observation count and receiver-coverage estimate travel
-  with every aggregated value.
-* NEVER present a model output as a guarantee or a forecast of business outcome — accuracy
-  guarantees are explicitly out of scope, and the UI language must reflect that.
+  extrapolated. Sparse data is reported as sparse, and where coverage cannot support a measured
+  bound, publish no bound and withhold the insight.
+* Coverage is a first-class column: observation count, sampled-duration fraction, and
+  receiver-coverage estimate travel with every aggregated value.
+* Report skill against the naive baseline alongside absolute error. A small absolute error can
+  still be worthless.
+* The UI MUST state each figure's bound and verification age. NEVER present a point estimate
+  as certain, and NEVER present a verified bound as a promise about a business outcome — the
+  guarantee is about the accuracy of the output, not about the result of acting on it.
 
 ---
 
