@@ -18,7 +18,7 @@ Businesses in the Philippines often take losses as a given during every typhoon 
 * Weather patterns and forecasts.
 * Supply chain routing.
 * Mobility (Flight and ship paths).
-* Approximate population density (Utilizing satellite night light data for visual effects rather than standard WorldPop data).
+* Approximate population density (Using standard WorldPop data and satellite night light data for visual effects).
 
 **2. Insights Generation**
 * Optimal timelines for planting crops.
@@ -32,6 +32,7 @@ Businesses in the Philippines often take losses as a given during every typhoon 
 * Animation of all converging factors (weather, mobility, density).
 
 ### Out-of-Scope
+* Paid version of data of any kind. Project strictly uses public or free tier data.
 * Validation of the data against official census records.
 * Guarantees on the absolute accuracy of the generated results.
 * Use of LLMs to make autonomous key business decisions.
@@ -53,17 +54,17 @@ Businesses in the Philippines often take losses as a given during every typhoon 
 * **Infrastructure:** To be decided.
 
 ### System Architecture
-A containerized microservices architecture. Python worker scripts will handle the scheduled ingestion and processing of satellite nightlight and weather data, converting them into optimized spatial formats (like GeoJSON). The Next.js frontend will query the PostgreSQL and BigQuery databases via the FastAPI backend to dynamically generate site-specific insights and render the animated mapping interface on the client side.
+To be decided.
 
 ### Risks and Mitigations
 * **Risk:** Processing and animating multiple heavy spatial datasets (mobility paths + weather + nightlights) can cause severe UI lag and browser crashing.
-  * **Mitigation:** Pre-process spatial data on the backend using Python (Pandas/GeoPandas) and serve lightweight, simplified GeoJSON vector tiles to the frontend rather than raw data. 
+  * **Mitigation:** To be decided.
 * **Risk:** API rate limits or downtime from weather/flight data dependencies.
-  * **Mitigation:** Implement a robust caching layer for historical data and fallback protocols if live feeds fail.
+  * **Mitigation:** To be decided.
 
 ## Milestones
 
 * **Phase 1 (Map Generation and Initial Data Overlay):** Develop the core web app with a free ship and flight path data overlay.
-* **Phase 2 (Secondary and Live Data Overlay):** Estimate population additions from satellite nightlight data and overlay live weather data onto the map.
+* **Phase 2 (Secondary and Live Data Overlay):** Estimate population additions from WorldPop (with Satellite Nightlight visualization) and overlay live weather data onto the map.
 * **Phase 3 (Processing and Insights Generation):** Generate useful business insights from the available data. Ensure insights are configurable per specific site.
 * **Phase 4 (Testing & Launch):** Conduct quality assurance, refine rendering performance, execute deployment, and gather initial user feedback.
