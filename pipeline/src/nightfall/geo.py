@@ -48,9 +48,14 @@ PH_AOI = BoundingBox(west=116.0, south=4.0, east=127.0, north=21.5)
 
 #: Default map view: Manila Bay and the Batangas corridor, the densest convergence of port,
 #: air, and population activity in the country.
+#:
+#: The zoom is not a framing preference. Individual tracks are drawn from zoom 9 up, and area
+#: aggregates — the right representation below that — arrive in a later phase, so opening any
+#: wider would present an empty map as the product's first impression and make an absence of
+#: rendering indistinguishable from an absence of traffic.
 DEFAULT_VIEW_LON = 120.98
 DEFAULT_VIEW_LAT = 14.58
-DEFAULT_VIEW_ZOOM = 7.4
+DEFAULT_VIEW_ZOOM = 9.0
 
 
 def haversine_km(lon1: float, lat1: float, lon2: float, lat2: float) -> float:
