@@ -1,0 +1,99 @@
+version: 2
+
+# A note on `where: entity_id is not null`, which appears on every test below.
+#
+# dbt-duckdb's external materialization writes a single all-null row when a model produces no
+# rows, so that the Parquet file still carries a schema. On a cold start — an empty landing
+# zone, or a lookback window with no successful collection in it — that sentinel is the whole
+# file. It is filtered here, and in `nightfall.bake`, which are the only two readers. The
+# `no_sentinel_rows_leak` test below asserts that a populated model never contains one.
+
+models:
+  - name: curated_positions
+    description: >
+      Curated mobility positions as GeoParquet, partitioned by date and coarse H3 parent,
+      schema-versioned in the path. Aircraft and vessels share one shape; `mode` separates
+      them. Every row carries the landing-zone object and pipeline run that produced it.
+    data_tests:
+      - nightfall.observed_at_is_plausible:
+          config:
+            where: "entity_id is not null"
+      - nightfall.position_is_in_aoi:
+          config:
+            where: "entity_id is not null"
+    columns:
+      - name: schema_version
+        description: Bumped whenever a column changes meaning; also present in the path.
+        data_tests:
+          - not_null:
+              config:
+                where: "entity_id is not null"
+      - name: mode
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["air", "sea"]
+              config:
+                where: "entity_id is not null"
+      - name: geom
+        description: EPSG:4326 point, written as GeoParquet WKB (invariant 5).
+      - name: h3_coverage
+        description: >
+          H3 cell used for every area-normalized measure. Named by role, not resolution; the
+          resolution travels beside it so a file always states which grid it was built on.
+        data_tests:
+          - not_null:
+              config:
+                where: "entity_id is not null"
+      - name: raw_object
+        description: Landing-zone object this row was derived from (invariant 7).
+        data_tests:
+          - not_null:
+              config:
+                where: "entity_id is not null"
+      - name: run_id
+        description: Pipeline run that produced this row (invariant 7).
+        data_tests:
+          - not_null:
+              config:
+                where: "entity_id is not null"
+
+  - name: curated_coverage_h3
+    description: >
+      Per H3 cell, time bucket, and source: the aggregate plus the evidence behind it. No
+      value in this model may be read without the coverage columns beside it.
+    columns:
+      - name: observation_count
+        description: Positions contributing to the aggregate.
+        data_tests:
+          - not_null:
+              config:
+                where: "h3_coverage is not null"
+      - name: entity_count
+        description: Distinct aircraft or vessels contributing.
+      - name: sample_count
+        description: Distinct stored objects contributing.
+      - name: sampled_duration_fraction
+        description: >
+          Fraction of the time bucket during which the source was observing, from the declared
+          observation interval of each contributing object. Distinguishes a quiet bucket from
+          an unobserved one.
+        data_tests:
+          - not_null:
+              config:
+                where: "h3_coverage is not null"
+          - nightfall.fraction_between_zero_and_one:
+              config:
+                where: "h3_coverage is not null"
+      - name: receiver_coverage
+        description: >
+          Null in Phase 1. Neither upstream publishes receiver locations, so there is nothing
+          to compute it from; `coverage_model` records that rather than leaving a
+          plausible-looking number in its place.
+      - name: coverage_model
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["unmodelled"]
+              config:
+                where: "h3_coverage is not null"
