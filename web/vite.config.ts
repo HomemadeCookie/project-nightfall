@@ -37,4 +37,10 @@ export default defineConfig({
   worker: {
     format: 'es',
   },
+  test: {
+    // `test/` holds the contract suite, which needs a real baked artifact and so runs as a
+    // separate step after the pipeline rather than on every `npm test`.
+    include: ['src/**/*.test.ts'],
+    environment: 'node',
+  },
 });
