@@ -52,7 +52,7 @@ export function MapView({ manifest }: { manifest: Manifest }): React.JSX.Element
 
   const setZoom = useAppStore((state) => state.setZoom);
   const setHover = useAppStore((state) => state.setHover);
-  const setError = useAppStore((state) => state.setError);
+  const notify = useAppStore((state) => state.notify);
   const disableAnimation = useAppStore((state) => state.disableAnimation);
 
   // One effect owns the map's whole lifetime. Splitting it across effects is how a map ends
@@ -71,13 +71,13 @@ export function MapView({ manifest }: { manifest: Manifest }): React.JSX.Element
 
     const rebuild = (): void => {
       if (disposed || overlay === null) return;
-      const { showAir, showSea, animated } = useAppStore.getState();
+      const { showAir, showSea, playing } = useAppStore.getState();
       overlay.setProps({
         layers: buildLayers(loaded.current, zoomRef.current, {
           manifest,
           showAir,
           showSea,
-          animated,
+          playing,
         }),
       });
     };
@@ -107,9 +107,12 @@ export function MapView({ manifest }: { manifest: Manifest }): React.JSX.Element
       });
       created = map;
       mapRef.current = map;
+      // Publish the opening zoom immediately. Waiting for the first `zoomend` would leave the
+      // UI describing a zoom level the user is not looking at.
+      setZoom(manifest.initial_view.zoom);
 
       if (!hasBasemap) {
-        setError(
+        notify(
           'Basemap tiles are not published yet, so the map is showing positions without ' +
             'geographic context.',
         );
@@ -124,6 +127,10 @@ export function MapView({ manifest }: { manifest: Manifest }): React.JSX.Element
       overlay = new MapLibreOverlay({
         interleaved: false,
         layers: [],
+        // Tracks are drawn a pixel and a half wide. Exact-pixel picking would make hover a
+        // test of mouse precision rather than a way to read the map, so the pick is allowed a
+        // small radius — still far tighter than the spacing between distinct tracks.
+        pickingRadius: 6,
         // deck.gl's own tooltip is bypassed: it takes a plain string, and the detail here is
         // two lines of structured text plus a mode swatch.
         onHover: (info: PickingInfo) => {
@@ -143,16 +150,24 @@ export function MapView({ manifest }: { manifest: Manifest }): React.JSX.Element
 
       unsubscribe = animationClock.subscribe(rebuild);
 
-      try {
-        await loadArtifacts(manifest, loaded.current);
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : String(cause));
-        return;
-      }
+      // A layer that fails to load is reported, not fatal. The layers are independent, and
+      // blanking the map because one of several artifacts is missing would throw away the
+      // data that did arrive (README § Risks, degrade rather than fail).
+      const failures = await loadArtifacts(manifest, loaded.current);
       if (disposed) return;
+      for (const failure of failures) {
+        notify(failure);
+      }
 
       const [start, end] = spanOf(loaded.current);
       animationClock.setRange(start, end);
+      // A clock that is not about to run is parked at the end of the window rather than at
+      // its first instant, so the opening view is everything that was observed instead of a
+      // blank map — the same reason the default zoom sits at the track gate.
+      const { animated: willAnimate, playing: willPlay } = useAppStore.getState();
+      if (!(willAnimate && willPlay)) {
+        animationClock.setPosition(end);
+      }
       rebuild();
     })();
 
@@ -166,27 +181,27 @@ export function MapView({ manifest }: { manifest: Manifest }): React.JSX.Element
       overlayRef.current = null;
       mapRef.current = null;
     };
-  }, [manifest, setZoom, setError, setHover, disableAnimation]);
+  }, [manifest, setZoom, notify, setHover, disableAnimation]);
 
   // Layer visibility is React state, so it rebuilds through the same path as a zoom change.
   const showAir = useAppStore((state) => state.showAir);
   const showSea = useAppStore((state) => state.showSea);
   const animated = useAppStore((state) => state.animated);
+  const playing = useAppStore((state) => state.playing);
   useEffect(() => {
     overlayRef.current?.setProps({
       layers: buildLayers(loaded.current, zoomRef.current, {
         manifest,
         showAir,
         showSea,
-        animated,
+        playing,
       }),
     });
-  }, [manifest, showAir, showSea, animated]);
+  }, [manifest, showAir, showSea, playing]);
 
   // The clock is driven from state so that whatever changes `playing` — the scrubber, a lost
   // context, the capability probe — gets the same behaviour. Playing a clock with no range
   // yet is a no-op, and `setRange` publishes once the artifacts land.
-  const playing = useAppStore((state) => state.playing);
   useEffect(() => {
     if (playing && animated) {
       animationClock.play();
@@ -204,8 +219,9 @@ export function MapView({ manifest }: { manifest: Manifest }): React.JSX.Element
   return <div ref={container} className="map" />;
 }
 
-async function loadArtifacts(manifest: Manifest, into: Loaded): Promise<void> {
-  await Promise.all(
+/** Loads every layer, returning a sentence per layer that could not be loaded. */
+async function loadArtifacts(manifest: Manifest, into: Loaded): Promise<string[]> {
+  const outcomes = await Promise.allSettled(
     manifest.layers.map(async (layer) => {
       if (layer.kind === 'tracks') {
         const bundle = await loadTracks(servingUrl(layer.url));
@@ -220,6 +236,14 @@ async function loadArtifacts(manifest: Manifest, into: Loaded): Promise<void> {
       }
     }),
   );
+
+  return outcomes.flatMap((outcome, index) => {
+    if (outcome.status === 'fulfilled') return [];
+    const id = manifest.layers[index]?.id ?? 'unknown';
+    const reason: unknown = outcome.reason;
+    const detail = reason instanceof Error ? reason.message : String(reason);
+    return [`Layer ${id} could not be loaded: ${detail}`];
+  });
 }
 
 function spanOf(loaded: Loaded): [number, number] {
@@ -241,11 +265,11 @@ interface RenderInputs {
   manifest: Manifest;
   showAir: boolean;
   showSea: boolean;
-  animated: boolean;
+  playing: boolean;
 }
 
 function buildLayers(loaded: Loaded, zoom: number, inputs: RenderInputs): DeckLayer[] {
-  const { manifest, showAir, showSea, animated } = inputs;
+  const { manifest, showAir, showSea, playing } = inputs;
   const layers: DeckLayer[] = [];
   const currentTime = animationClock.currentPosition;
   const range = filterRange(showAir, showSea);
@@ -263,7 +287,7 @@ function buildLayers(loaded: Loaded, zoom: number, inputs: RenderInputs): DeckLa
           modes: entry.modes,
           range,
           currentTime,
-          animated,
+          playing,
         }),
       );
     }

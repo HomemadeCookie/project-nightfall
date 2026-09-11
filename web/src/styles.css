@@ -101,7 +101,7 @@ a {
 .header,
 .sidebar,
 .attribution,
-.banner {
+.banners {
   position: absolute;
   z-index: 1;
 }
@@ -274,18 +274,27 @@ button:disabled {
   background: rgb(242 153 74 / 10%);
 }
 
-.banner {
+/* Notices stack upward from the attribution bar: each is a separate fact, and collapsing them
+   into one line would run them together into a sentence nobody wrote. */
+.banners {
   bottom: 10px;
   left: 50%;
   display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  max-width: min(640px, calc(100% - 24px));
+  transform: translateX(-50%);
+}
+
+.banner {
+  display: flex;
   align-items: center;
   gap: 14px;
-  max-width: min(640px, calc(100% - 24px));
   padding: 9px 13px;
   border: 1px solid var(--warn);
   border-radius: 8px;
   background: rgb(30 22 12 / 94%);
-  transform: translateX(-50%);
 }
 
 .hovercard {

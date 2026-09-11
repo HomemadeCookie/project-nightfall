@@ -105,7 +105,8 @@ export interface TrackLayerOptions {
   modes: Float32Array;
   range: [number, number] | null;
   currentTime: number;
-  animated: boolean;
+  /** Whether the clock is running, which is what the trail is for. */
+  playing: boolean;
 }
 
 export function trackLayer(options: TrackLayerOptions): DeckLayer {
@@ -133,11 +134,13 @@ export function trackLayer(options: TrackLayerOptions): DeckLayer {
     widthMaxPixels: 4,
     capRounded: true,
     jointRounded: true,
-    // A static device shows the whole observed span at once rather than an animation it
-    // cannot afford to run.
-    fadeTrail: options.animated,
+    // The trail is the motion cue, so it only exists while there is motion. A standing clock
+    // — paused, scrubbed, or a device that will not animate — draws each track whole up to the
+    // playhead instead, which is both more informative and the only thing consistent with the
+    // time the scrubber is displaying.
+    fadeTrail: options.playing,
     trailLength: TRAIL_LENGTH_S,
-    currentTime: options.animated ? options.currentTime : bundle.timeRange[1],
+    currentTime: options.currentTime,
     pickable: true,
     opacity: 0.85,
   }) as unknown as DeckLayer;

@@ -13,7 +13,7 @@ import { AttributionBar } from './components/AttributionBar';
 import { FreshnessPanel } from './components/FreshnessPanel';
 import { MapView } from './components/MapView';
 import { TimeScrubber } from './components/TimeScrubber';
-import { MANIFEST_URL } from './config';
+import { MANIFEST_URL, MIN_TRACK_ZOOM } from './config';
 import { type Manifest, ManifestVersionError, parseManifest } from './manifest';
 import { useAppStore } from './store';
 
@@ -34,14 +34,13 @@ export function App(): React.JSX.Element {
   const setManifest = useAppStore((state) => state.setManifest);
   const setCapability = useAppStore((state) => state.setCapability);
   const capability = useAppStore((state) => state.capability);
-  const error = useAppStore((state) => state.error);
-  const setError = useAppStore((state) => state.setError);
+  const notify = useAppStore((state) => state.notify);
 
   useEffect(() => {
     const probe = probeCapability();
     setCapability(probe);
-    if (probe.reason !== null) setError(probe.reason);
-  }, [setCapability, setError]);
+    if (probe.reason !== null) notify(probe.reason);
+  }, [setCapability, notify]);
 
   const manifestQuery = useQuery({
     queryKey: ['manifest'],
@@ -87,17 +86,29 @@ export function App(): React.JSX.Element {
         <TimeScrubber epoch={epoch} />
       </aside>
 
-      {error === null ? null : (
-        <div className="banner" role="status">
-          <span>{error}</span>
-          <button type="button" className="link" onClick={() => setError(null)}>
+      <Notices />
+      <AttributionBar manifest={manifest} />
+      <HoverCard />
+    </div>
+  );
+}
+
+/** Everything the app has had to say, each dismissible on its own. */
+function Notices(): React.JSX.Element | null {
+  const notices = useAppStore((state) => state.notices);
+  const dismiss = useAppStore((state) => state.dismiss);
+  if (notices.length === 0) return null;
+
+  return (
+    <div className="banners" role="status">
+      {notices.map((notice) => (
+        <div className="banner" key={notice}>
+          <span>{notice}</span>
+          <button type="button" className="link" onClick={() => dismiss(notice)}>
             Dismiss
           </button>
         </div>
-      )}
-
-      <AttributionBar manifest={manifest} />
-      <HoverCard />
+      ))}
     </div>
   );
 }
@@ -121,7 +132,15 @@ function LayerToggles(): React.JSX.Element {
         <span className="swatch swatch-sea" aria-hidden="true" />
         Vessels
       </label>
-      <p className="muted small">Zoom {zoom.toFixed(1)}</p>
+
+      {zoom < MIN_TRACK_ZOOM ? (
+        // Said rather than left to inference. Below the gate the overlay draws nothing, and a
+        // blank map is indistinguishable from an absence of traffic.
+        <p className="notice small">
+          Individual tracks are drawn from zoom {MIN_TRACK_ZOOM}. Zoom in to see them; area
+          summaries for wider views come in a later phase.
+        </p>
+      ) : null}
     </section>
   );
 }

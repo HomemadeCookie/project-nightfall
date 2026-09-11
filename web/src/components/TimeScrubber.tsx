@@ -87,8 +87,10 @@ export function TimeScrubber({ epoch }: { epoch: Date }): React.JSX.Element {
         }}
       />
 
+      {/* Labelled, because otherwise it reads as the same kind of thing as the readout above
+          it — and a static pair of times that looks like a clock looks like a stuck clock. */}
       <p className="muted small">
-        {formatManilaTime(new Date(epoch.getTime() + range[0] * 1000))} to{' '}
+        Observed window: {formatManilaTime(new Date(epoch.getTime() + range[0] * 1000))} to{' '}
         {formatManilaTime(new Date(epoch.getTime() + range[1] * 1000))}
       </p>
     </section>

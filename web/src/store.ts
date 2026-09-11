@@ -28,8 +28,13 @@ interface AppState {
   showAir: boolean;
   showSea: boolean;
   hover: HoverTarget | null;
-  /** Surfaced in the UI. A silent failure is worse than a visible one. */
-  error: string | null;
+  /**
+   * Everything the app has had to tell the user, in the order it arose. A silent failure is
+   * worse than a visible one — and a list rather than one slot because these accumulate
+   * independently: a device without acceleration and an unpublished basemap are two separate
+   * facts, and holding one would have quietly dropped the other.
+   */
+  notices: readonly string[];
 
   setManifest: (manifest: Manifest) => void;
   setCapability: (capability: Capability) => void;
@@ -38,7 +43,8 @@ interface AppState {
   toggleAir: () => void;
   toggleSea: () => void;
   setHover: (hover: HoverTarget | null) => void;
-  setError: (error: string | null) => void;
+  notify: (notice: string) => void;
+  dismiss: (notice: string) => void;
   /** Called on WebGL context loss, which must rebuild rather than white-screen. */
   disableAnimation: (reason: string) => void;
 }
@@ -52,7 +58,7 @@ export const useAppStore = create<AppState>()((set) => ({
   showAir: true,
   showSea: true,
   hover: null,
-  error: null,
+  notices: [],
 
   setManifest: (manifest) => set({ manifest }),
   // Reduced motion does not disable the animation — it declines to start it. Scrubbing is
@@ -68,6 +74,18 @@ export const useAppStore = create<AppState>()((set) => ({
   toggleAir: () => set((state) => ({ showAir: !state.showAir })),
   toggleSea: () => set((state) => ({ showSea: !state.showSea })),
   setHover: (hover) => set({ hover }),
-  setError: (error) => set({ error }),
-  disableAnimation: (reason) => set({ animated: false, playing: false, error: reason }),
+  // Repeats are dropped. An effect that runs twice, which is what React's strict mode does on
+  // purpose, should not produce the same sentence twice.
+  notify: (notice) =>
+    set((state) =>
+      state.notices.includes(notice) ? state : { notices: [...state.notices, notice] },
+    ),
+  dismiss: (notice) =>
+    set((state) => ({ notices: state.notices.filter((entry) => entry !== notice) })),
+  disableAnimation: (reason) =>
+    set((state) => ({
+      animated: false,
+      playing: false,
+      notices: state.notices.includes(reason) ? state.notices : [...state.notices, reason],
+    })),
 }));
