@@ -43,8 +43,14 @@ def collect(name: str, settings: Settings) -> int:
         report.record(source=name, state="outage", detail=str(outage))
         log.warning("source=%s state=outage detail=%s", name, outage)
     else:
-        report.record(source=name, state="ok", objects_written=len(written))
-        log.info("source=%s state=ok objects_written=%d", name, len(written))
+        note = adapter.coverage_note()
+        report.record(source=name, state="ok", objects_written=len(written), detail=note)
+        log.info(
+            "source=%s state=ok objects_written=%d coverage=%s",
+            name,
+            len(written),
+            note or "complete",
+        )
     report.write(settings.health_path.with_name(f"health_{name}.json"))
     return 0
 

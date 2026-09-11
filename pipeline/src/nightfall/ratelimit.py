@@ -45,6 +45,15 @@ class Quota:
         if self.max_concurrent <= 0:
             raise ValueError("max_concurrent must be positive")
 
+    @property
+    def min_interval_s(self) -> float:
+        """The slowest sustained spacing any window implies.
+
+        Used as the floor for a retry after a rejection: a provider that has just refused a
+        request will refuse a retry that arrives sooner than its own limit allows.
+        """
+        return max(window.seconds / window.capacity for window in self.windows)
+
 
 @dataclass
 class _Bucket:
@@ -107,10 +116,15 @@ class TokenBucket:
 
 # Published limits, transcribed from provider documentation. Changing a number here changes
 # real behaviour, so each carries its source.
+#: adsb.lol documents roughly one request per second. Requesting at exactly that ceiling is
+#: refused in practice — a measured sweep at a 1.0 s spacing collected only half its coverage
+#: circles, the rest answered with HTTP 429 — so the pacing carries deliberate headroom. Six
+#: circles at this spacing still complete a sweep well inside the sweep interval, and the
+#: alternative is a systematic coverage hole in whichever circles come last.
 ADSB_LOL_QUOTA = Quota(
-    windows=(Window(capacity=1, seconds=1.0),),
+    windows=(Window(capacity=2, seconds=3.0),),
     max_concurrent=1,
-    source="adsb.lol documents ~1 request per second",
+    source="adsb.lol documents ~1 request per second; paced slower to stay under it",
 )
 
 AISSTREAM_QUOTA = Quota(

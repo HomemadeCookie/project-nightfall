@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from collections.abc import Sequence
 
 import httpx
@@ -68,6 +69,21 @@ DEFAULT_SWEEP_INTERVAL_S = 20.0
 #: enough that the runner time this costs stays proportionate to a scheduled data pull.
 DEFAULT_WINDOW_S = 180.0
 
+#: adsb.lol counts requests per *connection*, not per client.
+#:
+#: Measured, because it is documented nowhere: six coverage circles requested 1.5 s apart over
+#: one keep-alive connection return 200, 200, 200 and then HTTP 429 for everything that
+#: follows, while the identical sequence on a fresh connection per request returns 200
+#: throughout. Reusing the socket therefore produces a permanent hole in the southeast of the
+#: area of interest — the circles that happen to be swept last — which downstream would read
+#: as an empty sky rather than as an unasked question.
+#:
+#: This is also why the behaviour survived manual testing with curl, which opens a new
+#: connection for each invocation and so never reproduces it.
+KEEPALIVE_LIMITS = httpx.Limits(max_keepalive_connections=0, max_connections=1)
+
+log = logging.getLogger("nightfall")
+
 
 class AdsbLolAdapter(SourceAdapter):
     name = "adsb_lol"
@@ -92,6 +108,9 @@ class AdsbLolAdapter(SourceAdapter):
         self._sweep_interval_s = settings.adsb_sweep_interval_s
         self._timeout_s = timeout_s
         self._circles: tuple[Circle, ...] = coverage_circles(PH_AOI, MAX_RADIUS_NM)
+        #: Circles that failed at least once, and the last reason, for the coverage note.
+        self._skipped: dict[str, str] = {}
+        self._observed: set[str] = set()
 
     @property
     def circles(self) -> tuple[Circle, ...]:
@@ -115,7 +134,7 @@ class AdsbLolAdapter(SourceAdapter):
         """
         records: list[RawRecord] = []
         deadline = asyncio.get_running_loop().time() + self._window_s
-        async with httpx.AsyncClient(timeout=self._timeout_s) as client:
+        async with self.client() as client:
             for sweep in range(self.sweep_count):
                 records.extend(await self._sweep(client))
                 if sweep + 1 >= self.sweep_count:
@@ -133,8 +152,15 @@ class AdsbLolAdapter(SourceAdapter):
         for circle in self._circles:
             try:
                 body = await self._fetch(client, circle)
-            except SourceOutageError:
+            except SourceOutageError as skipped:
+                # Logged and counted, not swallowed. A skipped circle is a hole in the
+                # coverage this run will publish, and "which circle, and why" is the only way
+                # to tell a quiet region from one we failed to ask about (invariant 7).
+                key = self.request_key(circle)
+                self._skipped[key] = str(skipped)
+                log.warning("source=%s circle=%s state=skipped detail=%s", self.name, key, skipped)
                 continue
+            self._observed.add(self.request_key(circle))
             records.append(
                 RawRecord(
                     source=self.name,
@@ -146,12 +172,32 @@ class AdsbLolAdapter(SourceAdapter):
             )
         return records
 
+    def client(self) -> httpx.AsyncClient:
+        """An HTTP client that never reuses a connection. See `KEEPALIVE_LIMITS`."""
+        return httpx.AsyncClient(
+            timeout=self._timeout_s,
+            limits=KEEPALIVE_LIMITS,
+            headers=self.headers,
+        )
+
+    def coverage_note(self) -> str | None:
+        missed = sorted(key for key in self._skipped if key not in self._observed)
+        if not missed:
+            return None
+        # Named individually rather than counted: a reader who knows which circle was missed
+        # knows which part of the map to distrust.
+        detail = "; ".join(f"{key}: {self._skipped[key]}" for key in missed)
+        return (
+            f"{len(self._observed)} of {len(self._circles)} coverage circles observed. "
+            f"No aircraft were requested for {detail}"
+        )
+
     async def _fetch(self, client: httpx.AsyncClient, circle: Circle) -> bytes:
         url = f"{API_ROOT}/{self.request_key(circle)}"
         for attempt in range(self.max_attempts):
             await self._bucket.acquire()
             try:
-                response = await client.get(url, headers={"accept": "application/json"})
+                response = await client.get(url, headers=self.headers)
             except httpx.HTTPError as exc:
                 if attempt == self.max_attempts - 1:
                     raise SourceOutageError(f"adsb.lol unreachable: {exc}") from exc
@@ -161,9 +207,15 @@ class AdsbLolAdapter(SourceAdapter):
             if response.status_code == httpx.codes.TOO_MANY_REQUESTS:
                 await self._backoff(attempt, retry_after=_retry_after(response))
                 continue
-            # Any other 4xx is a request defect; retrying cannot fix it.
+            # Any other 4xx is a request defect; retrying cannot fix it. The body is carried
+            # into the message because that is where the provider explains itself — a bare
+            # "HTTP 403" sends the reader to a packet capture to learn what a sentence in the
+            # response already said.
             if httpx.codes.BAD_REQUEST <= response.status_code < httpx.codes.INTERNAL_SERVER_ERROR:
-                raise SourceOutageError(f"adsb.lol rejected {url}: HTTP {response.status_code}")
+                raise SourceOutageError(
+                    f"adsb.lol rejected {url}: HTTP {response.status_code} "
+                    f"{_reason(response)}".rstrip()
+                )
             if response.status_code >= httpx.codes.INTERNAL_SERVER_ERROR:
                 if attempt == self.max_attempts - 1:
                     raise SourceOutageError(f"adsb.lol failing: HTTP {response.status_code}")
@@ -172,6 +224,16 @@ class AdsbLolAdapter(SourceAdapter):
             return response.content
 
         raise SourceOutageError(f"adsb.lol exhausted {self.max_attempts} attempts for {url}")
+
+
+#: How much of a rejection body to quote. Enough for a sentence of explanation, short enough
+#: that an HTML error page does not bury the log.
+_REASON_LIMIT = 200
+
+
+def _reason(response: httpx.Response) -> str:
+    text = " ".join(response.text.split())[:_REASON_LIMIT]
+    return f"({text})" if text else ""
 
 
 def _retry_after(response: httpx.Response) -> float | None:

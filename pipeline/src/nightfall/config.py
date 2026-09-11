@@ -64,6 +64,25 @@ class Settings(BaseSettings):
         default_factory=lambda: os.environ.get("GITHUB_RUN_ID") or "local",
     )
 
+    #: Where a provider should write if this project's traffic is a problem for them.
+    #:
+    #: Not decoration: adsb.lol rejects a generic User-Agent outright, and every one of these
+    #: sources is a free service absorbing our requests. Defaulting to the repository means a
+    #: fork identifies itself as itself, so a misbehaving fork cannot cost the original its
+    #: access.
+    contact: str = Field(
+        default_factory=lambda: (
+            f"https://github.com/{os.environ['GITHUB_REPOSITORY']}"
+            if os.environ.get("GITHUB_REPOSITORY")
+            else "https://github.com/HomemadeCookie/project-nightfall"
+        )
+    )
+
+    @property
+    def user_agent(self) -> str:
+        """The identity every outbound request carries."""
+        return f"project-nightfall/{SCHEMA_VERSION}.0 (+{self.contact})"
+
     @property
     def raw_root(self) -> Path:
         return self.data_root

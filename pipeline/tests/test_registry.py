@@ -35,6 +35,17 @@ def test_attributions_are_generated_from_the_registry() -> None:
     assert all(entry["text"] and entry["licence"] and entry["url"] for entry in entries)
 
 
+def test_only_contributing_sources_are_credited() -> None:
+    """A credit for a source that supplied nothing reads as coverage that is merely empty.
+
+    "Vessel positions © aisstream.io" under a map with no vessels on it says vessel coverage
+    was collected and found nothing, when in fact it was never collected at all.
+    """
+    entries = registry.attributions({"adsb_lol"})
+    assert [entry["source"] for entry in entries] == ["adsb_lol"]
+    assert registry.attributions(set()) == []
+
+
 def test_no_licence_is_breached_while_the_project_is_non_commercial() -> None:
     assert registry.COMMERCIAL_USE is False
     assert registry.commercial_use_violations() == []

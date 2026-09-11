@@ -121,9 +121,30 @@ class SourceAdapter(ABC):
         self._settings = settings
         self._bucket = bucket if bucket is not None else TokenBucket(self.quota)
 
+    @property
+    def headers(self) -> dict[str, str]:
+        """Headers every outbound request carries.
+
+        The User-Agent is mandatory, not polite: adsb.lol answers a generic one with HTTP 403,
+        and these are free services that need a way to reach whoever is generating the load.
+        """
+        return {
+            "user-agent": self._settings.user_agent,
+            "accept": "application/json",
+        }
+
     @abstractmethod
     async def collect(self) -> Sequence[RawRecord]:
         """Fetch from upstream. Implementations must not parse or transform."""
+
+    def coverage_note(self) -> str | None:
+        """What this collection failed to observe, in words, or None if it observed it all.
+
+        Reported even on a successful run, and carried through to the manifest the browser
+        reads. A run that quietly observed two thirds of the area of interest is not a
+        successful run, it is a partial one, and the difference has to be visible (invariant 7).
+        """
+        return None
 
     async def run(self) -> list[str]:
         """Collect and persist. Returns the landing-zone paths written."""
@@ -140,9 +161,16 @@ class SourceAdapter(ABC):
         ]
 
     async def _backoff(self, attempt: int, *, retry_after: float | None = None) -> None:
-        """Exponential backoff with full jitter, honouring a server-supplied Retry-After."""
+        """Exponential backoff with jitter, honouring a server-supplied Retry-After.
+
+        Jittered over the upper half of the window rather than from zero. Full jitter can
+        return almost immediately, which against a provider that has just refused the request
+        means retrying inside the very interval it objected to — the retries then fail
+        identically and the attempt budget is spent without ever having waited.
+        """
         if retry_after is not None:
             await asyncio.sleep(retry_after)
             return
         ceiling = min(2.0**attempt, 60.0)
-        await asyncio.sleep(random.uniform(0.0, ceiling))
+        floor = min(ceiling, max(ceiling / 2.0, self.quota.min_interval_s))
+        await asyncio.sleep(random.uniform(floor, ceiling))

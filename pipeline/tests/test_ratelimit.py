@@ -65,6 +65,21 @@ def test_tokens_refill_over_time() -> None:
     assert bucket._wait_seconds() == 0.0
 
 
+def test_min_interval_is_the_slowest_window() -> None:
+    """The retry floor must come from the window that constrains hardest."""
+    quota = Quota(windows=(Window(capacity=10, seconds=1.0), Window(capacity=2, seconds=60.0)))
+    assert quota.min_interval_s == pytest.approx(30.0)
+
+
+def test_adsb_pacing_leaves_headroom_under_the_published_limit() -> None:
+    """Measured, not assumed: a sweep paced at exactly 1 request/second drew HTTP 429 for half
+    its coverage circles, which reads downstream as an empty sky over those regions."""
+    window = ADSB_LOL_QUOTA.windows[0]
+    assert window.refill_per_second < 1.0
+    # Still fast enough that six circles complete well inside one sweep interval.
+    assert ADSB_LOL_QUOTA.min_interval_s * 6 < 20.0
+
+
 def test_published_quotas_are_transcribed_with_their_source() -> None:
     """Each number here changes real behaviour, so it must say where it came from."""
     for quota in (ADSB_LOL_QUOTA, AISSTREAM_QUOTA, OPEN_METEO_QUOTA):

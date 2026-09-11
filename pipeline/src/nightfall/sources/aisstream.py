@@ -136,6 +136,7 @@ class AisStreamAdapter(SourceAdapter):
                 WS_ENDPOINT,
                 compression="deflate",
                 open_timeout=SUBSCRIBE_DEADLINE_S,
+                user_agent_header=self._settings.user_agent,
             ) as socket:
                 await socket.send(subscribe)
 

@@ -238,7 +238,10 @@ def bake(
             "zoom": DEFAULT_VIEW_ZOOM,
         },
         layers=layers,
-        attributions=[Attribution(**entry) for entry in registry.attributions()],
+        # Credit only what this build actually serves; see `registry.attributions`.
+        attributions=[
+            Attribution(**entry) for entry in registry.attributions({row[0] for row in rows})
+        ],
         sources=_read_health(settings),
         sampling_notice=SAMPLING_NOTICE,
     )

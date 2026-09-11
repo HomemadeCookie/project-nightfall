@@ -74,6 +74,84 @@ def sweep_payload(document: dict[str, object], *, sweep: int, interval_s: float)
     return json.dumps(moved).encode("utf-8")
 
 
+def ais_frames(
+    *,
+    vessels: int = 3,
+    reports: int = 5,
+    interval_s: float = 30.0,
+    start: datetime = FIXTURE_AT,
+) -> bytes:
+    """A window of enveloped AISStream frames, in the landing zone's newline-delimited form.
+
+    Built from the provider's published schema rather than captured, because the stream needs
+    a key. Each vessel drifts north-east at a steady few knots, which is enough to exercise
+    segmentation without pretending to be a real voyage.
+
+    One `ShipStaticData` frame is included: it carries no position and must be filtered out
+    rather than becoming a vessel parked at 0°N 0°E.
+    """
+    lines: list[bytes] = []
+    for vessel in range(vessels):
+        mmsi = 548_000_000 + vessel
+        for report in range(reports):
+            received = start.timestamp() + report * interval_s
+            frame = {
+                "MessageType": "PositionReport",
+                "MetaData": {
+                    "MMSI": mmsi,
+                    "ShipName": f"MV FIXTURE {vessel}",
+                    "latitude": 12.0 + vessel * 0.2,
+                    "longitude": 121.0 + vessel * 0.2,
+                },
+                "Message": {
+                    "PositionReport": {
+                        "UserID": mmsi,
+                        "Latitude": 12.0 + vessel * 0.2 + report * 0.01,
+                        "Longitude": 121.0 + vessel * 0.2 + report * 0.012,
+                        "Sog": 9.5,
+                        "Cog": 48.0,
+                        "NavigationalStatus": 0,
+                        "Timestamp": int(received) % 60,
+                    }
+                },
+            }
+            lines.append(
+                b'{"received_unix":'
+                + f"{received:.3f}".encode()
+                + b',"frame":'
+                + json.dumps(frame).encode()
+                + b"}"
+            )
+    static = {
+        "MessageType": "ShipStaticData",
+        "MetaData": {"MMSI": 548_000_000, "ShipName": "MV FIXTURE 0"},
+        "Message": {"ShipStaticData": {"UserID": 548_000_000, "Name": "MV FIXTURE 0"}},
+    }
+    lines.append(
+        b'{"received_unix":'
+        + f"{start.timestamp():.3f}".encode()
+        + b',"frame":'
+        + json.dumps(static).encode()
+        + b"}"
+    )
+    return b"\n".join(lines) + b"\n"
+
+
+def seed_ais_window(settings: Settings, *, window_s: float = 180.0) -> str:
+    """Write one AIS sampling window into the landing zone."""
+    from nightfall.store import LocalRawStore
+
+    return LocalRawStore(settings.raw_root).put(
+        source="aisstream",
+        request_key=f"stream/ph/{window_s:.0f}s",
+        body=ais_frames(),
+        # The object is stamped with the moment the window closed, which is what the transform
+        # subtracts the declared window length from.
+        observed_at=FIXTURE_AT + timedelta(seconds=window_s),
+        content_type="application/x-ndjson",
+    )
+
+
 def seed_window(
     settings: Settings,
     document: dict[str, object],

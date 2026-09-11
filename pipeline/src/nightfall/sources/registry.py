@@ -7,6 +7,8 @@ credits shown to users cannot drift out of date (README § Risks, licence terms)
 
 from __future__ import annotations
 
+from collections.abc import Collection
+
 from nightfall.sources.adsb_lol import AdsbLolAdapter
 from nightfall.sources.aisstream import AisStreamAdapter
 from nightfall.sources.base import CommercialUse, Licence, SourceAdapter
@@ -31,8 +33,17 @@ def licences() -> dict[str, Licence]:
     return {adapter.name: adapter.licence for adapter in ADAPTERS}
 
 
-def attributions() -> list[dict[str, str]]:
-    """Attribution entries for the UI, derived from the registry rather than hand-maintained."""
+def attributions(sources: Collection[str] | None = None) -> list[dict[str, str]]:
+    """Attribution entries for the UI, derived from the registry rather than hand-maintained.
+
+    Restricted to the sources that actually contributed to the build being credited. Crediting
+    a source that supplied nothing is not merely redundant: "Vessel positions © aisstream.io"
+    printed under a map with no vessels on it tells the reader that vessel coverage is being
+    shown and is empty, when in fact it was never collected.
+
+    Membership is decided by the served data, not by the collectors' current health, because a
+    source that failed this cycle may still be the origin of rows within the window.
+    """
     return [
         {
             "source": adapter.name,
@@ -41,6 +52,7 @@ def attributions() -> list[dict[str, str]]:
             "text": adapter.licence.attribution,
         }
         for adapter in sorted(ADAPTERS, key=lambda a: a.name)
+        if sources is None or adapter.name in sources
     ]
 
 

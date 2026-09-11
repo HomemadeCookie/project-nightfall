@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 
+import httpx
 import pytest
 
+from nightfall.config import Settings
 from nightfall.sources import adsb_lol
+from nightfall.sources.base import SourceOutageError
+from nightfall.store import LocalRawStore
 
 
 def test_now_is_read_as_milliseconds(adsb_document: dict[str, object]) -> None:
@@ -77,9 +82,6 @@ def test_positionless_aircraft_are_dropped(adsb_payload: bytes) -> None:
 
 
 def test_coverage_circles_stay_within_the_provider_limit() -> None:
-    from nightfall.config import Settings
-    from nightfall.store import LocalRawStore
-
     adapter = adsb_lol.AdsbLolAdapter(LocalRawStore.__new__(LocalRawStore), Settings())
     assert adapter.circles
     assert all(circle.radius_nm <= adsb_lol.MAX_RADIUS_NM for circle in adapter.circles)
@@ -89,9 +91,58 @@ def test_coverage_circles_stay_within_the_provider_limit() -> None:
 
 
 def test_sweep_count_follows_the_window() -> None:
-    from nightfall.config import Settings
-    from nightfall.store import LocalRawStore
-
     settings = Settings(adsb_window_s=180.0, adsb_sweep_interval_s=20.0)
     adapter = adsb_lol.AdsbLolAdapter(LocalRawStore.__new__(LocalRawStore), settings)
     assert adapter.sweep_count == 9
+
+
+def _adapter() -> adsb_lol.AdsbLolAdapter:
+    return adsb_lol.AdsbLolAdapter(LocalRawStore.__new__(LocalRawStore), Settings())
+
+
+def test_requests_identify_the_project_and_a_contact() -> None:
+    """adsb.lol answers a generic User-Agent with HTTP 403, so this is a hard requirement.
+
+    Learned the hard way: the default httpx agent is rejected with "User-Agent too generic;
+    include valid contact info", and every circle in every sweep fails identically, which
+    reads downstream as an empty sky.
+    """
+    agent = _adapter().headers["user-agent"]
+    assert "project-nightfall" in agent
+    assert "httpx" not in agent
+    assert "https://" in agent
+
+
+def test_connections_are_never_reused() -> None:
+    """adsb.lol counts requests per connection, which is documented nowhere.
+
+    Measured: three requests on one keep-alive socket succeed and every later request on that
+    socket is refused with HTTP 429, while the same sequence on a fresh connection each time
+    succeeds throughout. Left reused, the circles swept last never return data and the
+    southeast of the area of interest reads as an empty sky.
+    """
+    assert adsb_lol.KEEPALIVE_LIMITS.max_keepalive_connections == 0
+    client = _adapter().client()
+    try:
+        assert client.headers["user-agent"] == Settings().user_agent
+    finally:
+        asyncio.run(client.aclose())
+
+
+def test_rejection_quotes_the_provider_explanation() -> None:
+    """A 4xx must carry the provider's own words, which is where the reason lives."""
+    adapter = _adapter()
+    seen: list[str] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        seen.append(request.headers["user-agent"])
+        return httpx.Response(403, text="User-Agent too generic; include valid contact info.")
+
+    async def attempt() -> None:
+        transport = httpx.MockTransport(handle)
+        async with httpx.AsyncClient(transport=transport) as client:
+            await adapter._fetch(client, adapter.circles[0])
+
+    with pytest.raises(SourceOutageError, match="too generic"):
+        asyncio.run(attempt())
+    assert seen and "project-nightfall" in seen[0]
