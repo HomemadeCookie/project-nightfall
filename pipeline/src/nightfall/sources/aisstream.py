@@ -29,24 +29,25 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
-import os
 from collections.abc import Sequence
 
 import websockets
 
 from nightfall.clock import utc_now
+from nightfall.config import Settings
 from nightfall.geo import PH_AOI
-from nightfall.ratelimit import AISSTREAM_QUOTA
+from nightfall.ratelimit import AISSTREAM_QUOTA, TokenBucket
 from nightfall.sources.base import (
     CommercialUse,
     Licence,
     RawRecord,
     SourceAdapter,
-    SourceOutage,
+    SourceOutageError,
     as_integer,
     as_number,
     as_text,
 )
+from nightfall.store import RawStore
 
 WS_ENDPOINT = "wss://stream.aisstream.io/v0/stream"
 
@@ -78,14 +79,15 @@ class AisStreamAdapter(SourceAdapter):
 
     def __init__(
         self,
-        *args: object,
-        window_s: float = DEFAULT_WINDOW_S,
-        api_key: str | None = None,
-        **kwargs: object,
+        store: RawStore,
+        settings: Settings,
+        *,
+        bucket: TokenBucket | None = None,
     ) -> None:
-        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
-        self._window_s = window_s
-        self._api_key = api_key if api_key is not None else os.environ.get("AISSTREAM_API_KEY")
+        super().__init__(store, settings, bucket=bucket)
+        self._window_s = settings.ais_window_s
+        key = settings.aisstream_api_key
+        self._api_key = key.get_secret_value() if key is not None else None
 
     @property
     def window_s(self) -> float:
@@ -94,7 +96,7 @@ class AisStreamAdapter(SourceAdapter):
     def subscription(self) -> dict[str, object]:
         """The subscribe frame. Bounding boxes are [[lat, lon], [lat, lon]] pairs, not lon/lat."""
         if not self._api_key:
-            raise SourceOutage("AISSTREAM_API_KEY is not configured")
+            raise SourceOutageError("AISSTREAM_API_KEY is not configured")
         return {
             "APIKey": self._api_key,
             "BoundingBoxes": [
@@ -109,7 +111,7 @@ class AisStreamAdapter(SourceAdapter):
     async def collect(self) -> Sequence[RawRecord]:
         lines = await self._read_window()
         if not lines:
-            raise SourceOutage(
+            raise SourceOutageError(
                 f"aisstream delivered no frames in a {self._window_s:.0f}s window; "
                 "recorded as a coverage gap rather than zero traffic"
             )
@@ -119,6 +121,9 @@ class AisStreamAdapter(SourceAdapter):
                 request_key=self.request_key(),
                 body=b"\n".join(lines) + b"\n",
                 content_type="application/x-ndjson",
+                # The object is stamped with the moment the window closed, which is what the
+                # transform subtracts the declared window length from to bound the sample.
+                observed_at=utc_now(),
             )
         ]
 
@@ -148,7 +153,7 @@ class AisStreamAdapter(SourceAdapter):
                                 break
                             lines.append(_envelope(raw))
                 if not confirmed:
-                    raise SourceOutage(
+                    raise SourceOutageError(
                         "aisstream sent no SubscriptionConfirmation within "
                         f"{CONFIRMATION_TIMEOUT_S:.0f}s; the subscription or key was rejected, "
                         "which the provider signals by silence"
@@ -160,7 +165,7 @@ class AisStreamAdapter(SourceAdapter):
                             lines.append(_envelope(_as_bytes(frame)))
         except (OSError, websockets.WebSocketException) as exc:
             if not lines:
-                raise SourceOutage(f"aisstream connection failed: {exc}") from exc
+                raise SourceOutageError(f"aisstream connection failed: {exc}") from exc
             # A mid-window disconnect still yields a usable, shorter sample.
         return lines
 

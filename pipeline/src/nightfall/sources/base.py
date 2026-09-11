@@ -12,9 +12,10 @@ import random
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 
-from nightfall.clock import utc_now
+from nightfall.config import Settings
 from nightfall.ratelimit import Quota, TokenBucket
 from nightfall.store import RawStore
 
@@ -41,12 +42,19 @@ class Licence:
 
 @dataclass(frozen=True, slots=True)
 class RawRecord:
-    """One raw upstream response, on its way to the immutable landing zone."""
+    """One raw upstream response, on its way to the immutable landing zone.
+
+    `observed_at` is set by the adapter at fetch time rather than by the store at write time.
+    A collector that sweeps repeatedly within one job produces many records per run, and
+    stamping them all with the moment the run finished would collapse the timeline the sweeps
+    exist to capture.
+    """
 
     source: str
     request_key: str
     body: bytes
     content_type: str
+    observed_at: datetime
 
 
 def as_number(value: object) -> float | None:
@@ -83,7 +91,7 @@ def as_text(value: object) -> str | None:
     return str(value).strip() or None
 
 
-class SourceOutage(Exception):
+class SourceOutageError(Exception):
     """An upstream is unavailable.
 
     Raised rather than retried once the circuit opens. Collectors record an outage and exit
@@ -102,8 +110,15 @@ class SourceAdapter(ABC):
     #: Documented ceiling on consecutive upstream failures before the circuit opens.
     max_attempts: int = 4
 
-    def __init__(self, store: RawStore, *, bucket: TokenBucket | None = None) -> None:
+    def __init__(
+        self,
+        store: RawStore,
+        settings: Settings,
+        *,
+        bucket: TokenBucket | None = None,
+    ) -> None:
         self._store = store
+        self._settings = settings
         self._bucket = bucket if bucket is not None else TokenBucket(self.quota)
 
     @abstractmethod
@@ -118,7 +133,7 @@ class SourceAdapter(ABC):
                 source=record.source,
                 request_key=record.request_key,
                 body=record.body,
-                observed_at=utc_now(),
+                observed_at=record.observed_at,
                 content_type=record.content_type,
             )
             for record in records
@@ -130,4 +145,4 @@ class SourceAdapter(ABC):
             await asyncio.sleep(retry_after)
             return
         ceiling = min(2.0**attempt, 60.0)
-        await asyncio.sleep(random.uniform(0.0, ceiling))  # noqa: S311 - jitter, not crypto
+        await asyncio.sleep(random.uniform(0.0, ceiling))

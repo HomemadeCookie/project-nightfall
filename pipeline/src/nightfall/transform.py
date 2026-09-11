@@ -119,7 +119,7 @@ def dbt_vars(
     }
 
 
-class TransformFailed(RuntimeError):
+class TransformError(RuntimeError):
     """dbt returned a failure. Raised rather than logged so the job exits non-zero."""
 
 
@@ -152,7 +152,7 @@ def run_dbt(
     result = dbtRunner().invoke(list(args))
     if not result.success:
         detail = str(result.exception) if result.exception else "see dbt output above"
-        raise TransformFailed(f"dbt {' '.join(command)} failed: {detail}")
+        raise TransformError(f"dbt {' '.join(command)} failed: {detail}")
 
 
 def transform(

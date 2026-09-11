@@ -8,6 +8,8 @@ windows (per second, per hour, per day) that real providers publish.
 from __future__ import annotations
 
 import asyncio
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 
@@ -58,21 +60,17 @@ class TokenBucket:
     most restrictive window rather than whichever one happened to be checked.
     """
 
-    def __init__(self, quota: Quota, *, monotonic: object = None) -> None:
+    def __init__(self, quota: Quota, *, monotonic: Callable[[], float] | None = None) -> None:
         self._quota = quota
-        self._now = asyncio.get_event_loop().time if monotonic is None else monotonic  # type: ignore[assignment]
-        start = self._clock()
+        # `time.monotonic` rather than the event loop's clock: a bucket is constructed when its
+        # adapter is, which is outside any running loop, and it must measure elapsed time
+        # rather than wall-clock time so a clock adjustment cannot grant free requests.
+        self._now: Callable[[], float] = time.monotonic if monotonic is None else monotonic
+        start = self._now()
         self._buckets = [
             _Bucket(window=w, tokens=float(w.capacity), updated_at=start) for w in quota.windows
         ]
         self._semaphore = asyncio.Semaphore(quota.max_concurrent)
-
-    def _clock(self) -> float:
-        try:
-            return float(self._now())  # type: ignore[operator]
-        except RuntimeError:
-            # No running loop yet (construction outside async context); start the clock at 0.
-            return 0.0
 
     def _refill(self, now: float) -> None:
         for bucket in self._buckets:
@@ -85,7 +83,7 @@ class TokenBucket:
 
     def _wait_seconds(self) -> float:
         """Seconds until every window can supply one token. Zero means proceed now."""
-        now = self._clock()
+        now = self._now()
         self._refill(now)
         waits = [
             (1.0 - b.tokens) / b.window.refill_per_second for b in self._buckets if b.tokens < 1.0

@@ -1,4 +1,4 @@
-"""adsb.lol aircraft positions.
+"""adsb.lol aircraft positions, collected as a bounded sampling window.
 
 Primary flight source. Chosen over OpenSky specifically because it publishes no restriction
 on hyperscaler IP ranges, and every job in this project runs on an Azure-hosted GitHub Actions
@@ -6,26 +6,42 @@ runner (see README § Risks, platform rule changes).
 
 Licence is ODbL, so derived geometry carries share-alike obligations. Data is live-only: an
 empty result means "not airborne right now", never "absent from history".
+
+Like the AIS collector, this is a window rather than a single snapshot: the job sweeps the
+coverage circles repeatedly at a short cadence for a few minutes, then exits. The single
+snapshot that a scheduled job invites is the wrong shape for a *path* overlay, because two
+fixes half an hour apart cannot be joined into a track — an airliner covers hundreds of
+kilometres between them, and drawing a line across that is interpolation over unobserved
+ground, which the coverage rules forbid. Sweeping densely inside a bounded window instead
+produces track segments that were genuinely observed, separated by gaps that are shown as
+gaps.
+
+Nothing here outlives the job (invariant 8): the window is a few minutes of an ephemeral
+GitHub Actions run, not a resident poller.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import Sequence
 
 import httpx
 
+from nightfall.clock import utc_now
+from nightfall.config import Settings
 from nightfall.geo import PH_AOI, Circle, coverage_circles
-from nightfall.ratelimit import ADSB_LOL_QUOTA
+from nightfall.ratelimit import ADSB_LOL_QUOTA, TokenBucket
 from nightfall.sources.base import (
     CommercialUse,
     Licence,
     RawRecord,
     SourceAdapter,
-    SourceOutage,
+    SourceOutageError,
     as_number,
     as_text,
 )
+from nightfall.store import RawStore
 
 API_ROOT = "https://api.adsb.lol/v2"
 
@@ -42,6 +58,16 @@ NOW_UNITS_PER_SECOND = 1000.0
 #: Bounds for the asserted unit check: 2020-01-01 and 2100-01-01 as Unix seconds.
 _PLAUSIBLE_UNIX_RANGE = (1_577_836_800.0, 4_102_444_800.0)
 
+#: Seconds between sweeps of the full coverage set. The AOI needs six circles and the provider
+#: documents roughly one request per second, so a sweep occupies about six seconds; twenty
+#: leaves ample headroom and still puts an aircraft's successive fixes close enough together
+#: that the straight line between them is a fair account of where it went.
+DEFAULT_SWEEP_INTERVAL_S = 20.0
+
+#: Length of one collection window. Bounded so the job is unmistakably ephemeral, and short
+#: enough that the runner time this costs stays proportionate to a scheduled data pull.
+DEFAULT_WINDOW_S = 180.0
+
 
 class AdsbLolAdapter(SourceAdapter):
     name = "adsb_lol"
@@ -53,8 +79,17 @@ class AdsbLolAdapter(SourceAdapter):
     )
     quota = ADSB_LOL_QUOTA
 
-    def __init__(self, *args: object, timeout_s: float = 20.0, **kwargs: object) -> None:
-        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+    def __init__(
+        self,
+        store: RawStore,
+        settings: Settings,
+        *,
+        bucket: TokenBucket | None = None,
+        timeout_s: float = 20.0,
+    ) -> None:
+        super().__init__(store, settings, bucket=bucket)
+        self._window_s = settings.adsb_window_s
+        self._sweep_interval_s = settings.adsb_sweep_interval_s
         self._timeout_s = timeout_s
         self._circles: tuple[Circle, ...] = coverage_circles(PH_AOI, MAX_RADIUS_NM)
 
@@ -62,34 +97,53 @@ class AdsbLolAdapter(SourceAdapter):
     def circles(self) -> tuple[Circle, ...]:
         return self._circles
 
+    @property
+    def sweep_count(self) -> int:
+        return max(1, int(self._window_s // self._sweep_interval_s))
+
     @staticmethod
     def request_key(circle: Circle) -> str:
         return f"point/{circle.lat}/{circle.lon}/{circle.radius_nm:.0f}"
 
     async def collect(self) -> Sequence[RawRecord]:
-        """One request per coverage circle, rate-limited, raw body preserved verbatim.
+        """Sweep the coverage circles for the length of the window.
 
         A circle that fails after its retries is skipped rather than aborting the run: partial
         coverage recorded honestly is more useful than no observation at all, and the gap is
-        visible downstream through the coverage columns.
+        visible downstream through the coverage columns. The window ends on schedule whatever
+        happens, so a degraded upstream shortens the sample instead of hanging the job.
         """
         records: list[RawRecord] = []
+        deadline = asyncio.get_running_loop().time() + self._window_s
         async with httpx.AsyncClient(timeout=self._timeout_s) as client:
-            for circle in self._circles:
-                try:
-                    body = await self._fetch(client, circle)
-                except SourceOutage:
-                    continue
-                records.append(
-                    RawRecord(
-                        source=self.name,
-                        request_key=self.request_key(circle),
-                        body=body,
-                        content_type="application/json",
-                    )
-                )
+            for sweep in range(self.sweep_count):
+                records.extend(await self._sweep(client))
+                if sweep + 1 >= self.sweep_count:
+                    break
+                remaining = deadline - asyncio.get_running_loop().time()
+                if remaining <= 0:
+                    break
+                await asyncio.sleep(min(self._sweep_interval_s, remaining))
         if not records:
-            raise SourceOutage("adsb.lol returned no usable response for any coverage circle")
+            raise SourceOutageError("adsb.lol returned no usable response for any coverage circle")
+        return records
+
+    async def _sweep(self, client: httpx.AsyncClient) -> list[RawRecord]:
+        records: list[RawRecord] = []
+        for circle in self._circles:
+            try:
+                body = await self._fetch(client, circle)
+            except SourceOutageError:
+                continue
+            records.append(
+                RawRecord(
+                    source=self.name,
+                    request_key=self.request_key(circle),
+                    body=body,
+                    content_type="application/json",
+                    observed_at=utc_now(),
+                )
+            )
         return records
 
     async def _fetch(self, client: httpx.AsyncClient, circle: Circle) -> bytes:
@@ -100,7 +154,7 @@ class AdsbLolAdapter(SourceAdapter):
                 response = await client.get(url, headers={"accept": "application/json"})
             except httpx.HTTPError as exc:
                 if attempt == self.max_attempts - 1:
-                    raise SourceOutage(f"adsb.lol unreachable: {exc}") from exc
+                    raise SourceOutageError(f"adsb.lol unreachable: {exc}") from exc
                 await self._backoff(attempt)
                 continue
 
@@ -109,15 +163,15 @@ class AdsbLolAdapter(SourceAdapter):
                 continue
             # Any other 4xx is a request defect; retrying cannot fix it.
             if httpx.codes.BAD_REQUEST <= response.status_code < httpx.codes.INTERNAL_SERVER_ERROR:
-                raise SourceOutage(f"adsb.lol rejected {url}: HTTP {response.status_code}")
+                raise SourceOutageError(f"adsb.lol rejected {url}: HTTP {response.status_code}")
             if response.status_code >= httpx.codes.INTERNAL_SERVER_ERROR:
                 if attempt == self.max_attempts - 1:
-                    raise SourceOutage(f"adsb.lol failing: HTTP {response.status_code}")
+                    raise SourceOutageError(f"adsb.lol failing: HTTP {response.status_code}")
                 await self._backoff(attempt)
                 continue
             return response.content
 
-        raise SourceOutage(f"adsb.lol exhausted {self.max_attempts} attempts for {url}")
+        raise SourceOutageError(f"adsb.lol exhausted {self.max_attempts} attempts for {url}")
 
 
 def _retry_after(response: httpx.Response) -> float | None:

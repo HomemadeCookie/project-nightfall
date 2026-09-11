@@ -47,8 +47,18 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "DTZ", "T20", "RET", "S
 python_version = "3.13"
 strict = true
 warn_unreachable = true
-disallow_any_explicit = true
 files = ["src", "tests"]
+# Without the plugin, mypy cannot see the fields a model generates and reports every
+# construction as an error. `disallow_any_explicit` is deliberately not set: it rejects any
+# subclass of pydantic's BaseModel, and Pydantic is the mandated boundary validator.
+plugins = ["pydantic.mypy"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+# Not set: the credential fields below take deliberate AliasChoices so a token can be read
+# from either the prefixed or the conventional environment variable name.
+warn_required_dynamic_aliases = false
 
 [[tool.mypy.overrides]]
 module = ["huggingface_hub.*", "duckdb.*", "pyarrow.*"]
