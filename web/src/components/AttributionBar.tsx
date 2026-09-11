@@ -42,7 +42,7 @@ export function AttributionBar({ manifest }: { manifest: Manifest }): React.JSX.
           </p>
         </div>
       ) : (
-        <span className="muted small">
+        <span className="attribution-sources muted small">
           {manifest.attributions.map((credit) => credit.source).join(' · ')}
         </span>
       )}

@@ -127,10 +127,11 @@ export function MapView({ manifest }: { manifest: Manifest }): React.JSX.Element
       overlay = new MapLibreOverlay({
         interleaved: false,
         layers: [],
-        // Tracks are drawn a pixel and a half wide. Exact-pixel picking would make hover a
+        // Tracks are drawn barely two pixels wide. Exact-pixel picking would make hover a
         // test of mouse precision rather than a way to read the map, so the pick is allowed a
-        // small radius — still far tighter than the spacing between distinct tracks.
-        pickingRadius: 6,
+        // radius of roughly a fingertip — still tighter than the spacing between tracks, and
+        // the nearest match wins where they do converge.
+        pickingRadius: 10,
         // deck.gl's own tooltip is bypassed: it takes a plain string, and the detail here is
         // two lines of structured text plus a mode swatch.
         onHover: (info: PickingInfo) => {

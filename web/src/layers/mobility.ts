@@ -130,7 +130,9 @@ export function trackLayer(options: TrackLayerOptions): DeckLayer {
     // presence tells the layer the attributes are supplied rather than derived.
     _pathType: 'open',
     widthUnits: 'pixels',
-    widthMinPixels: 1.5,
+    // A hairline reads as noise on a dark basemap and is hard to aim at; two pixels is the
+    // point where a track looks deliberate without the overlay becoming the map.
+    widthMinPixels: 2,
     widthMaxPixels: 4,
     capRounded: true,
     jointRounded: true,

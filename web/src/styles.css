@@ -262,6 +262,10 @@ button:disabled {
   backdrop-filter: blur(8px);
 }
 
+.attribution-sources {
+  margin-left: 7px;
+}
+
 .attribution-detail ul {
   margin: 6px 0;
   padding-left: 18px;
@@ -277,7 +281,8 @@ button:disabled {
 /* Notices stack upward from the attribution bar: each is a separate fact, and collapsing them
    into one line would run them together into a sentence nobody wrote. */
 .banners {
-  bottom: 10px;
+  /* Clear of the attribution bar, which shares the bottom edge. */
+  bottom: 52px;
   left: 50%;
   display: flex;
   flex-direction: column;
@@ -353,6 +358,12 @@ button:disabled {
 
   .attribution {
     bottom: 8px;
+  }
+
+  /* The panels take the bottom of a narrow screen, so notices move under the header. */
+  .banners {
+    top: 74px;
+    bottom: auto;
   }
 }
 
