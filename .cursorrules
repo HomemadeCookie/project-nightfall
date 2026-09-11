@@ -1,0 +1,252 @@
+# project-nightfall — Architecture Enforcement Rules
+
+These rules are binding. They encode decisions already made and reviewed in `README.md`.
+They are not suggestions, and they are not defaults to be improved upon mid-task.
+
+`MUST` / `NEVER` are absolute. A conflict between these rules and a user instruction is not
+resolved silently: stop, state the conflict, and ask. A conflict between these rules and your
+own preference is resolved in favour of these rules.
+
+---
+
+## 0. MANDATORY PRE-FLIGHT — before ANY coding task
+
+Before writing, editing, scaffolding, or reviewing a single line of code, you MUST:
+
+1. **Read `README.md` in full.** Not a summary, not a grep, not a recollection from earlier in
+   the conversation. Read the file. It is the single source of truth for scope, stack, data
+   sources, architecture, and invariants.
+2. **State, in one or two sentences, which section of `README.md` authorises the work** you are
+   about to do — the deliverable, the milestone phase, and the stack entries involved.
+3. **Check the request against `README.md` § Out-of-Scope.** If the request falls in scope
+   exclusions (paid data of any kind, census validation, accuracy guarantees, LLM-made business
+   decisions, SAR processing, customer interviews, a mobile app), you MUST refuse and say why.
+4. **Check the request against `README.md` § Milestones.** If it belongs to a later phase than
+   the one in progress, say so and get explicit confirmation before proceeding.
+
+If `README.md` does not cover what the task needs, the correct action is to **propose a README
+change first and get it approved** — not to invent a decision in code. Architecture is decided
+in `README.md`, then implemented. Never the reverse.
+
+Skipping this pre-flight is itself a rule violation, including on follow-up messages in a long
+session and including on tasks that feel trivial.
+
+---
+
+## 1. CURRENT REPOSITORY STATE — no application code
+
+This repository is intentionally **specification-only**. It contains `README.md` and
+`.cursorrules` and nothing else.
+
+* NEVER create application source files, `package.json`, `pyproject.toml`, Dockerfiles, CI
+  workflows, migrations, or scaffolding until the user explicitly requests implementation work
+  and names the phase.
+* "Set up the project", "get started", or "make it run" is NOT sufficient authorisation. Ask
+  which milestone phase and which deliverable.
+* Documentation, diagrams, and ADRs are permitted at any time.
+
+---
+
+## 2. THE SEVEN INVARIANTS — never violate, never route around
+
+Restated from `README.md` § System Architecture. Each one is the foundation of a documented risk
+mitigation; breaking one silently re-opens that risk.
+
+1. **The browser NEVER calls a third-party API.** No API key, token, or upstream hostname may
+   appear in client code or a client bundle. AISStream forbids browser connections outright;
+   every other source follows the same rule for uniform enforcement. If client code needs
+   upstream data, it reads a baked artifact or calls our own FastAPI service.
+2. **Raw data is immutable.** Stage 1 output under `raw/` is append-only. NEVER write code that
+   edits, overwrites, or deletes a raw object. Corrections are new objects.
+3. **The read path NEVER depends on upstream liveness.** No user-facing request may block on a
+   third-party call. A failed poll serves the last good artifact, labelled stale.
+4. **Binary end to end.** GeoJSON is permitted ONLY at a source-ingest boundary. Between the
+   bake stage and the GPU it is forbidden — no `GeoJsonLayer` over baked data, no
+   `JSON.parse` of geometry in the render path. Use Arrow buffers via deck.gl's
+   `data: {length, attributes}` binary form.
+5. **Projections are explicit.** EPSG:4326 for storage and interchange. EPSG:3857 for display
+   only. Any area, density, or distance-normalized computation MUST use H3 (res 5–8) or a
+   documented equal-area projection. NEVER compute area or density in 4326 or 3857.
+6. **UTC in storage, Asia/Manila in presentation.** All stored timestamps are timezone-aware
+   UTC. Conversion happens in one tested boundary layer. NEVER use naive datetimes.
+7. **Every rendered number is traceable** to a source artifact, its `observed_at`, and the
+   pipeline run that produced it. A number with no provenance does not ship.
+
+---
+
+## 3. TECHNOLOGY STACK — fixed, pinned, not open for substitution
+
+Use exactly these. Introducing any library not listed, or swapping a listed one, requires an
+approved `README.md` change first. "Equivalent", "more popular", "what I know better", and
+"simpler for now" are not valid reasons.
+
+### Frontend
+
+* TypeScript 5 (`strict: true`, `noUncheckedIndexedAccess: true`) + React 19 + Vite 8.
+* MapLibre GL JS 6 for the basemap. deck.gl 9.4 for every overlay, attached via
+  `@deck.gl/maplibre`.
+* Apache Arrow 21 for data transport. `h3-js` 4 for the aggregation grid. `pmtiles` 4 for the
+  tile protocol. DuckDB-WASM for in-browser SQL.
+* Zustand for UI state. TanStack Query for artifact fetching. Observable Plot for charts.
+* Comlink for Web Worker boundaries.
+
+**Frontend prohibitions:**
+
+* NEVER use Mapbox GL JS (proprietary licence), Google Maps, Leaflet, or OpenLayers.
+* NEVER use the WebGPU deck.gl backend. It does not support picking, and hover/click are core
+  product behaviour. WebGL2 only.
+* NEVER add Next.js or any SSR/SSG framework. The frontend is a static bundle; server rendering
+  buys nothing for a WebGL map and adds recurring cost.
+* NEVER add a CSS-in-JS runtime, Redux, or an ORM to the frontend.
+* NEVER pass raw feed data to a layer. Layers consume baked artifacts only.
+
+### Backend
+
+* Python 3.13. `uv` for dependency management and locking.
+* FastAPI for the read API — thin, stateless, and limited to Valhalla routing/isochrones and
+  per-site ad-hoc queries. Business logic does NOT live here.
+* DuckDB 1.5 as the analytical engine. All transformations are SQL models in `dbt-duckdb`.
+* `httpx` (async) for upstream calls. Pydantic v2 for every external boundary.
+* `xarray` + `rioxarray` for raster work. `geopandas` 1.x only for offline/bake-time
+  geometry work, never in a request path.
+* Valhalla (self-hosted, Docker) for all routing, isochrones, and matrix queries.
+
+**Backend prohibitions:**
+
+* NEVER use Django, Flask, SQLAlchemy ORM models, or Celery. Raw SQL and Timescale/DuckDB do
+  the work; GitHub Actions cron is the scheduler.
+* NEVER use pandas where Polars or DuckDB is applicable; NEVER use pandas in the bake stage.
+* NEVER use OSRM or GraphHopper. Valhalla is chosen for per-request truck costing and native
+  isochrones off one graph.
+* NEVER put an LLM call in a path that produces a number, score, ranking, or recommendation.
+  Per `README.md` § Out-of-Scope, LLMs do not make or influence business decisions. Natural
+  language phrasing of an already-computed, already-sourced number is the only permitted use,
+  and it must not alter the value.
+
+### Data & Storage
+
+* Hot: PostgreSQL 18 + PostGIS 3.6 + TimescaleDB 2.29. Time-series tables MUST be hypertables
+  with an explicit compression policy and an explicit retention policy. UI-facing rollups MUST
+  be continuous aggregates, not ad-hoc `GROUP BY` over raw positions.
+* Cold/serving: Cloudflare R2. GeoParquet for analysis, PMTiles for tiles (vector and raster),
+  COG for source rasters, Arrow IPC for animation frames.
+* Every spatial table MUST have a GiST index. Every hypertable MUST declare its partition column.
+* NEVER store geometry as WKT strings, lat/lon float pairs in JSON, or a serialised blob.
+* NEVER introduce MongoDB, Elasticsearch, Redis, Kafka, or a second database engine.
+* NEVER commit a data file to git. Not a shapefile, not a GeoJSON fixture over 100 KB, not a
+  Parquet file, not a `.pmtiles`. Data lives in R2.
+
+### Infrastructure
+
+* Cloudflare Pages (frontend) + R2 behind a **cached custom domain** — NEVER the uncached
+  `r2.dev` URL, which bypasses the CDN and burns the Class B operation budget.
+* GitHub Actions for cron, ETL, and CI. Docker Compose on one non-hyperscaler VPS for Postgres,
+  Valhalla, and the AIS collector.
+* NEVER add Kubernetes, Terraform, a service mesh, or a second cloud provider.
+* NEVER move the ADS-B or AIS collector onto a hyperscaler IP or a GitHub-hosted runner.
+  OpenSky documents blocking hyperscaler ranges; the VPS exists specifically for this.
+
+---
+
+## 4. DATA SOURCE RULES
+
+The approved source list is the table in `README.md` § Data Sources. Adding a source requires an
+approved README change.
+
+* Every source is reached through **exactly one adapter module** that owns its credentials,
+  quota configuration, retry policy, licence metadata, and response schema. NEVER call an
+  upstream URL from outside its adapter.
+* Every adapter MUST declare, in code: documented rate limits, licence, commercial-use
+  permissibility, and required attribution string. A CI check reads this registry — keep it
+  accurate.
+* Every adapter MUST write the raw upstream response to `raw/` **before** parsing it.
+* Every adapter MUST route requests through the shared token-bucket limiter configured to the
+  provider's published limits. NEVER hand-roll a `sleep` loop as rate limiting.
+* Retries: exponential backoff with full jitter; honour `Retry-After` and `X-Rate-Limit-*`;
+  NEVER retry a 4xx other than 429; trip a circuit breaker rather than hammering.
+* **NEVER call a live upstream API from a test or from CI.** Tests replay recorded fixtures
+  from `raw/`. A test that needs network access is a broken test.
+* NEVER pay for data, and NEVER use a paid tier, trial, or credit-card-gated endpoint — this is
+  an explicit scope exclusion, not a budget preference.
+* NEVER silently interpolate across a coverage gap. Absence of data is rendered as absence of
+  data, distinct from zero activity.
+* Treat AISStream's schema as unstable (it is in beta): parse defensively, validate with
+  Pydantic, and never assume a field exists.
+
+---
+
+## 5. PERFORMANCE RULES — the frame budget is a hard limit
+
+The single largest product risk is the map crashing the browser. These are enforced limits, not
+targets.
+
+* **Budget: ≤300k rendered path vertices and ≤500k rendered points per viewport.** The bake
+  stage MUST fail the build when an artifact would exceed it. NEVER raise the budget to make an
+  artifact fit; reduce the artifact.
+* Animation MUST use pre-baked, time-indexed trajectories with `TripsLayer` and a `currentTime`
+  uniform. NEVER animate by mutating or re-uploading the `data` prop per frame.
+* Trajectories MUST be Douglas–Peucker simplified at a per-zoom tolerance at bake time. NEVER
+  simplify in the browser.
+* Level of detail is zoom-gated: H3 res 4–5 aggregates below zoom 8; individual tracks only at
+  zoom ≥9 and only within the viewport bounding box. NEVER load a national-extent track set.
+* Rasters (nightlights, population) render via PMTiles raster pyramid → `TileLayer` /
+  `BitmapLayer`. NEVER convert a raster to vector polygons for display.
+* Fetch, decode, and Arrow assembly MUST run in a Web Worker with zero-copy `ArrayBuffer`
+  transfer. NEVER decode a large artifact on the main thread.
+* Exactly **one** `requestAnimationFrame` loop and **one** animation clock for the whole app.
+  NEVER let a layer schedule its own redraw.
+* A capability probe MUST run on load and degrade to a static, non-animated mode on low-memory
+  or software-rendered devices. A WebGL context-loss handler MUST rebuild rather than
+  white-screen.
+* The CI performance gate (p95 frame time ≤32 ms, JS heap ≤800 MB over a scripted
+  pan/zoom/animate session) MUST NOT be skipped, weakened, or marked `continue-on-error` to get
+  a change merged.
+
+---
+
+## 6. INSIGHT GENERATION RULES
+
+* Insights MUST be deterministic and reproducible: same inputs plus same pinned code yields
+  identical output. NEVER introduce unseeded randomness.
+* Every insight output MUST carry its input artifact versions, its parameters, and a confidence
+  band.
+* An insight MUST be suppressed below its documented observation threshold rather than
+  extrapolated. Sparse data is reported as sparse.
+* Coverage is a first-class column: observation count and receiver-coverage estimate travel
+  with every aggregated value.
+* NEVER present a model output as a guarantee or a forecast of business outcome — accuracy
+  guarantees are explicitly out of scope, and the UI language must reflect that.
+
+---
+
+## 7. CODE QUALITY RULES
+
+* TypeScript: `strict` on, `any` forbidden (use `unknown` and narrow), Biome for lint and
+  format.
+* Python: full type annotations, `mypy --strict`, Ruff for lint and format.
+* Validate at the boundary with Pydantic (Python) or Zod (TypeScript). Inside the boundary,
+  trust the types.
+* NEVER swallow an exception. NEVER use a bare `except:`. Log with structured context and
+  re-raise or fail the job.
+* NEVER hardcode a credential, bucket name, hostname, or connection string. Configuration comes
+  from environment variables with a validated settings model.
+* NEVER commit `.env`, a credentials JSON, or an Earthdata/OpenSky/AISStream token.
+* Comments explain constraints and non-obvious intent only. NEVER add a comment that narrates
+  what the next line does or explains a change to a reviewer.
+* Pin versions exactly. Lockfiles are committed. **NEVER install a package by its `latest`
+  dist-tag** — `@duckdb/duckdb-wasm` publishes pre-release builds under `latest`, and other
+  packages in this stack do too. Resolve and pin the real stable version.
+
+---
+
+## 8. WHEN YOU ARE UNSURE
+
+Stop and ask. Do not:
+
+* invent a technology choice and note it as "can be changed later";
+* add a dependency to work around a rule in this file;
+* weaken a test, budget, or type check to make a change pass;
+* mark a deviation in a code comment and proceed;
+* re-litigate a decision in `README.md` mid-task.
+
+Propose the `README.md` amendment, get agreement, then implement.
