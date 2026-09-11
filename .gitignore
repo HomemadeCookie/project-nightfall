@@ -29,4 +29,8 @@ logs/
 # Node
 node_modules/
 dist/
+dist-types/
 *.tsbuildinfo
+
+# The serving set is mounted here for local development, never committed.
+web/public/serving/
