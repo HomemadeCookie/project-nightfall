@@ -42,12 +42,16 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "DTZ", "T20", "RET", "S
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ARG"]
+# `summarise.py` writes markdown to stdout for a run summary; `print` is its whole job.
+"scripts/summarise.py" = ["T201"]
+# `seed_demo.py` must put the repository on the path before it can import the test fixtures.
+"scripts/seed_demo.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.13"
 strict = true
 warn_unreachable = true
-files = ["src", "tests"]
+files = ["src", "tests", "scripts"]
 # Without the plugin, mypy cannot see the fields a model generates and reports every
 # construction as an error. `disallow_any_explicit` is deliberately not set: it rejects any
 # subclass of pydantic's BaseModel, and Pydantic is the mandated boundary validator.

@@ -1,0 +1,122 @@
+name: ci
+
+# Every gate the project claims to have, run on a standard runner in a public repository,
+# which is the only tier that bills nothing (invariant 0). No self-hosted runner, no larger
+# runner, no third-party CI service.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  workflows:
+    # The workflows are the only part of this project with no test around them, so they get a
+    # linter instead. A typo in a scheduled job is not noticed until data stops arriving.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: actionlint
+        run: |
+          version=1.7.12
+          curl -fsSL -o actionlint.tar.gz \
+            "https://github.com/rhysd/actionlint/releases/download/v${version}/actionlint_${version}_linux_amd64.tar.gz"
+          tar -xzf actionlint.tar.gz actionlint
+          ./actionlint -color
+
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          cache-dependency-glob: pipeline/uv.lock
+
+      # `--locked` fails rather than silently resolving something new: a lockfile that no
+      # longer matches the manifest is a reproducibility defect, not a CI inconvenience.
+      - run: uv sync --locked --all-extras
+
+      - run: uv run ruff format --check .
+      - run: uv run ruff check .
+      - run: uv run mypy
+
+      # No test in this suite touches the network. A green run therefore says nothing about
+      # upstream availability, which is the point: an upstream outage must not fail CI.
+      - run: uv run pytest -q
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+        working-directory: web
+
+      - run: npm run lint
+        working-directory: web
+
+      - run: npm run typecheck
+        working-directory: web
+
+      - run: npm test
+        working-directory: web
+
+      - run: npm run build
+        working-directory: web
+
+  contract:
+    # The cross-language check: real artifacts written by Python, decoded by the TypeScript
+    # reader. Both halves of the Arrow layout are pinned separately, and this is what proves
+    # the two agree. A layout mistake does not raise anywhere else — it silently shifts every
+    # vertex offset and the map draws confident nonsense.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          cache-dependency-glob: pipeline/uv.lock
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: uv sync --locked --all-extras
+        working-directory: pipeline
+
+      # Recorded fixtures, no network: the bytes are real Arrow, the observations are not real
+      # observations, and the manifest says so with the run id `demo`.
+      - run: uv run --project pipeline python pipeline/scripts/seed_demo.py
+
+      - run: npm ci
+        working-directory: web
+
+      - run: npm run test:contract
+        working-directory: web

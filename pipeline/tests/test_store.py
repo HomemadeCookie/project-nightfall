@@ -78,3 +78,50 @@ def test_stored_bytes_are_reproducible(tmp_path: Path) -> None:
     right = (tmp_path / "b" / second.put(**arguments)).read_bytes()  # type: ignore[arg-type]
     assert left == right
     assert gzip.decompress(left) == body
+
+
+def test_restore_asks_only_for_the_partitions_it_will_read() -> None:
+    """The archive grows without bound; the runner disk does not.
+
+    Fetching the whole dataset would work for a week and then start failing on disk space, at
+    which point the read path depends on how long the project has been running.
+    """
+    from nightfall.transform import partition_dates
+
+    dates = partition_dates(AT, lookback_hours=48)
+    assert dates == ["2026-09-09", "2026-09-10", "2026-09-11"]
+
+
+def test_archive_commits_once_per_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """One commit per sampling window, not one per object.
+
+    A window is forty-odd objects. Committing each separately is a rate no free service should
+    be asked to absorb, and it makes the archive's own history unreadable.
+    """
+    from nightfall import store as store_module
+
+    calls: list[dict[str, object]] = []
+
+    class FakeApi:
+        def __init__(self, token: str | None = None) -> None:
+            self.token = token
+
+        def create_repo(self, *args: object, **kwargs: object) -> None:
+            calls.append({"create_repo": kwargs})
+
+        def upload_folder(self, **kwargs: object) -> None:
+            calls.append({"upload_folder": kwargs})
+
+    monkeypatch.setattr(store_module, "HfApi", FakeApi, raising=False)
+    monkeypatch.setitem(
+        __import__("sys").modules,
+        "huggingface_hub",
+        type("module", (), {"HfApi": FakeApi})(),
+    )
+
+    archive = store_module.Archive("someone/nightfall-raw", token="t")
+    archive.upload(tmp_path, run_id="run-1")
+
+    uploads = [call for call in calls if "upload_folder" in call]
+    assert len(uploads) == 1
+    assert uploads[0]["upload_folder"]["path_in_repo"] == "raw"  # type: ignore[index]

@@ -14,12 +14,13 @@ import time
 from pathlib import Path
 
 from nightfall.bake import bake
+from nightfall.clock import utc_now
 from nightfall.config import Settings
 from nightfall.health import HealthReport
 from nightfall.sources import registry
 from nightfall.sources.base import SourceOutageError
-from nightfall.store import LocalRawStore
-from nightfall.transform import DEFAULT_LOOKBACK_HOURS, transform
+from nightfall.store import Archive, LocalRawStore
+from nightfall.transform import DEFAULT_LOOKBACK_HOURS, partition_dates, transform
 
 #: The dbt project lives beside the package rather than inside it, so it is located relative
 #: to the repository rather than to the installed wheel.
@@ -55,6 +56,53 @@ def collect(name: str, settings: Settings) -> int:
     return 0
 
 
+def archive(settings: Settings) -> int:
+    """Mirror this run's raw objects to the archive of record.
+
+    Best effort by design. A failed upload must not fail the run: the objects are already on
+    disk and the rest of the pipeline is a pure function of that directory, so the cost of an
+    archive outage is a gap in history, not a broken deployment (invariant 3).
+    """
+    if settings.archive_repo is None:
+        log.info("archive skipped: no repository configured")
+        return 0
+    token = settings.hf_token
+    if token is None:
+        log.warning("archive skipped: repository configured but no token available")
+        return 0
+    try:
+        Archive(settings.archive_repo, token.get_secret_value()).upload(
+            settings.raw_root, run_id=settings.run_id
+        )
+    except Exception:
+        log.exception("archive upload failed; history will have a gap for run %s", settings.run_id)
+        return 0
+    log.info("archive updated repo=%s run_id=%s", settings.archive_repo, settings.run_id)
+    return 0
+
+
+def restore(settings: Settings, *, lookback_hours: int) -> int:
+    """Fetch the raw partitions the transform is about to read.
+
+    Also best effort: without it the run transforms only the window it collected itself, which
+    is a shorter overlay rather than a failure.
+    """
+    if settings.archive_repo is None:
+        log.info("restore skipped: no repository configured")
+        return 0
+    dates = partition_dates(utc_now(), lookback_hours=lookback_hours)
+    try:
+        Archive(
+            settings.archive_repo,
+            settings.hf_token.get_secret_value() if settings.hf_token else None,
+        ).restore(settings.raw_root, dates=dates)
+    except Exception:
+        log.exception("restore failed; transforming only what this run collected")
+        return 0
+    log.info("restored partitions=%s", ",".join(dates))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="nightfall", description=__doc__)
     subcommands = parser.add_subparsers(dest="command", required=True)
@@ -67,6 +115,10 @@ def main(argv: list[str] | None = None) -> int:
     transform_parser.add_argument("--project-dir", type=Path, default=DEFAULT_PROJECT_DIR)
 
     subcommands.add_parser("bake", help="produce the serving set")
+    subcommands.add_parser("archive", help="mirror raw/ to the archive of record")
+
+    restore_parser = subcommands.add_parser("restore", help="fetch raw/ from the archive")
+    restore_parser.add_argument("--lookback-hours", type=int, default=DEFAULT_LOOKBACK_HOURS)
 
     args = parser.parse_args(argv)
     logging.basicConfig(
@@ -78,6 +130,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "collect":
         return collect(args.source, settings)
+    if args.command == "archive":
+        return archive(settings)
+    if args.command == "restore":
+        return restore(settings, lookback_hours=args.lookback_hours)
     if args.command == "transform":
         variables = transform(
             settings,

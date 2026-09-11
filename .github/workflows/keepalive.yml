@@ -1,0 +1,36 @@
+name: keepalive
+
+# GitHub disables scheduled workflows in a public repository after 60 days without repository
+# activity, and scheduled runs themselves do not count as activity. Left alone, the pipeline
+# would therefore stop publishing roughly two months after the last commit — silently, with the
+# site frozen at whatever it last produced and no failure anywhere to notice.
+#
+# The freshness badge in the UI would report the staleness correctly, which is the point of it,
+# but the cause would be invisible. So this re-enables the scheduled workflows weekly.
+
+on:
+  schedule:
+    - cron: '7 5 * * 1'  # 05:07 UTC on Mondays
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+concurrency:
+  group: keepalive
+  cancel-in-progress: false
+
+jobs:
+  enable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Re-enable the scheduled workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          for workflow in pipeline.yml build-basemap.yml keepalive.yml; do
+            # `enable` on an already-enabled workflow is a no-op, so this needs no condition.
+            gh workflow enable "$workflow" && echo "enabled $workflow"
+          done

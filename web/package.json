@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "description": "project-nightfall web application: static bundle, no backend",
+  "engines": {
+    "node": ">=22.12"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc --build && vite build",

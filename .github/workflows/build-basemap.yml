@@ -1,0 +1,121 @@
+name: build-basemap
+
+# Cuts a Philippines-sized basemap out of a Protomaps daily build and puts it in the archive.
+#
+# Self-hosted because a hosted tile service is a metered billing relationship (invariant 0) and
+# MapLibre's demo tiles are a demo, not a licence to depend on. Protomaps publishes complete
+# planet builds as PMTiles, and `pmtiles extract` reads only the byte ranges it needs over
+# HTTP, so cutting our area of interest out of a 100 GB planet file costs a few hundred
+# megabytes of transfer rather than a download of the planet.
+#
+# Monthly, because OpenStreetMap coastlines and roads do not change on the timescale the
+# mobility overlay does, and every rebuild is transfer someone else pays for.
+
+on:
+  schedule:
+    - cron: '23 4 2 * *'  # 04:23 UTC on the 2nd of each month
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-basemap
+  cancel-in-progress: false
+
+env:
+  # Zoom 10 is a deliberate ceiling. The overlay draws individual tracks from zoom 9, and at
+  # zoom 10 the basemap is already a legible coastline-and-city reference; carrying it to 14
+  # would multiply the extract by more than an order of magnitude for detail this product
+  # never asks a question about, and the whole site has to fit under 1 GB.
+  MAX_ZOOM: 10
+  # Matches the area of interest in `nightfall.geo`, with a small margin so panning to the edge
+  # does not reach blank tiles.
+  BBOX: 115.0,3.0,128.0,22.5
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      NIGHTFALL_ARCHIVE_REPO: ${{ vars.NIGHTFALL_ARCHIVE_REPO }}
+      NIGHTFALL_HF_TOKEN: ${{ secrets.NIGHTFALL_HF_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Refuse to run without somewhere to put the result
+        # Failing here rather than after an hour of extraction.
+        run: |
+          if [ -z "${NIGHTFALL_ARCHIVE_REPO}" ] || [ -z "${NIGHTFALL_HF_TOKEN}" ]; then
+            echo "::error::set the NIGHTFALL_ARCHIVE_REPO variable and NIGHTFALL_HF_TOKEN secret"
+            exit 1
+          fi
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          cache-dependency-glob: pipeline/uv.lock
+
+      - run: uv sync --locked
+        working-directory: pipeline
+
+      - name: Install pmtiles
+        run: |
+          version=1.31.2
+          curl -fsSL -o pmtiles.tar.gz \
+            "https://github.com/protomaps/go-pmtiles/releases/download/v${version}/go-pmtiles_${version}_Linux_x86_64.tar.gz"
+          tar -xzf pmtiles.tar.gz pmtiles
+          sudo install -m 0755 pmtiles /usr/local/bin/pmtiles
+          pmtiles version
+
+      - name: Extract the Philippines
+        run: |
+          # Protomaps names each build by date. Walk back a few days rather than assuming
+          # today's exists: the build is published on its own schedule, not ours.
+          for offset in 1 2 3 4 5 6 7; do
+            date=$(date -u -d "-${offset} day" +%Y%m%d)
+            url="https://build.protomaps.com/${date}.pmtiles"
+            if curl -fsI "$url" > /dev/null; then
+              echo "extracting from $url"
+              pmtiles extract "$url" ph.pmtiles \
+                --bbox="${BBOX}" \
+                --maxzoom="${MAX_ZOOM}"
+              exit 0
+            fi
+          done
+          echo "::error::no Protomaps build found in the last 7 days"
+          exit 1
+
+      - name: Report the size against the Pages ceiling
+        run: |
+          bytes=$(stat -c%s ph.pmtiles)
+          echo "basemap is $bytes bytes" | tee -a "$GITHUB_STEP_SUMMARY"
+          # The whole site must fit under 1 GB and the mobility artifacts need room too.
+          if [ "$bytes" -gt 629145600 ]; then
+            echo "::error::basemap exceeds 600 MB; lower MAX_ZOOM or tighten BBOX"
+            exit 1
+          fi
+
+      - name: Publish to the archive
+        run: |
+          uv run --project pipeline python - <<'PY'
+          from pathlib import Path
+
+          from huggingface_hub import HfApi
+
+          from nightfall.config import Settings
+
+          settings = Settings()
+          assert settings.archive_repo and settings.hf_token
+          api = HfApi(token=settings.hf_token.get_secret_value())
+          api.create_repo(settings.archive_repo, repo_type="dataset", exist_ok=True)
+          api.upload_file(
+              path_or_fileobj=Path("ph.pmtiles"),
+              path_in_repo="basemap/ph.pmtiles",
+              repo_id=settings.archive_repo,
+              repo_type="dataset",
+              commit_message="basemap: monthly rebuild",
+          )
+          PY

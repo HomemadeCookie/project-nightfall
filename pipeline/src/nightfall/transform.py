@@ -61,6 +61,16 @@ def _partition_dates(since: datetime, until: datetime) -> Iterator[str]:
         day += timedelta(days=1)
 
 
+def partition_dates(now: datetime, *, lookback_hours: int = DEFAULT_LOOKBACK_HOURS) -> list[str]:
+    """The `dt=` partitions a transform with this lookback will read.
+
+    Shared with the restore step so the archive fetch and the transform cannot disagree about
+    which days matter — a fetch one day short is a silently truncated overlay.
+    """
+    until = require_utc(now)
+    return list(_partition_dates(until - timedelta(hours=lookback_hours), until))
+
+
 def raw_globs(
     raw_root: Path,
     source: str,
