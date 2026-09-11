@@ -9,6 +9,7 @@ Businesses in the Philippines often take losses as a given during every typhoon 
 ### Success Metrics
 * **Improved Decision-Making:** Businesses making better monthly and seasonal decisions regarding crops, logistics, and manning.
 * **Loss Reduction:** A measurable decrease in overall losses attributed to weather, geography, and movement inefficiencies.
+* **Verified Accuracy:** Every published insight stays within its stated error bound, measured against ground truth each cycle, and beats its naive baseline. Breaches withhold the insight rather than degrade it silently.
 
 ## Scope and Objectives
 
@@ -31,20 +32,37 @@ Businesses in the Philippines often take losses as a given during every typhoon 
 * Interactive map of the target site and nearby cities.
 * Animation of all converging factors (weather, mobility, density).
 
+**4. Accuracy and Validation**
+
+The project **guarantees the accuracy of its outputs**, and treats that guarantee as a deliverable to be built and measured rather than a claim to be asserted. A guarantee nobody verifies is marketing, so the guarantee is expressed as a published, continuously tested specification:
+
+* **A published accuracy specification per insight type.** Every insight carries a stated error bound and the method used to establish it. Nothing ships without one.
+* **Continuous verification against ground truth.** Each pipeline cycle scores prior outputs against what actually happened: weather forecasts against subsequent observations, typhoon track forecasts against PAGASA and IBTrACS best-track positions, and population density against **official PSA census figures** — validation against census records is an in-scope requirement of this guarantee.
+* **Skill relative to a naive baseline.** Each insight must measurably beat the obvious alternative — seasonal climatology for weather-driven insights, persistence for mobility. An insight that cannot beat climatology adds no value and is not shipped.
+* **Fail closed.** If measured accuracy falls outside the published bound, the affected insight is withheld and labelled, not quietly served. Degradation is visible by construction.
+* **Reproducibility as a hard guarantee.** Any published figure can be rebuilt exactly from immutable raw inputs plus pinned code, and every displayed number resolves to its inputs, parameters, and pipeline run.
+* **A user-visible accuracy report**, versioned alongside the data, so the guarantee is auditable by the people relying on it.
+
+One honest boundary, because the guarantee has to be keepable: forecast skill decays with lead time as a matter of physics, so the commitment is to **verified, published error bounds that the product is held to and fails closed against** — not to predictions that are never wrong. Where uncertainty is irreducible, it is quantified and shown rather than hidden behind a point estimate.
+
 ### Out-of-Scope
 * **Any expenditure whatsoever.** Total project cost must be and remain exactly **$0.00** — data, compute, storage, hosting, and domains included. See § Hard Constraint: Zero Cost.
 * Paid version of data of any kind. Project strictly uses public or free tier data.
-* Validation of the data against official census records.
-* Guarantees on the absolute accuracy of the generated results.
-* Use of LLMs to make autonomous key business decisions.
 * Advanced satellite data processing (e.g., SAR - Synthetic Aperture Radar).
 * Primary customer interviews.
 * Mobile application version.
+
+### Deferred — Out of Scope for Initial Versions, Planned for Later
+
+Excluded from v1 but explicitly anticipated, so the architecture must leave room for them rather than foreclose them.
+
+* **LLM involvement in business decisions.** No LLM may produce, influence, rank, or adjust a number, score, or recommendation in the initial versions. This is a versioned deliverable rather than a permanent prohibition: a later version may introduce LLM-assisted analysis, and when it does it will require its own accuracy specification, human sign-off on the decision boundary, and the same verification treatment as any other insight (§ Accuracy and Validation). Building it in v1 is forbidden; designing it out of the system permanently is equally wrong.
 
 ### Key Dependencies
 * Reliable access to satellite data (including night imagery).
 * Access to flight and ship path data.
 * Access to historical and live weather data APIs.
+* Access to official PSA census figures and archived historical weather, both required as ground truth by the accuracy guarantee.
 
 ## Implementation Details
 
@@ -68,7 +86,7 @@ An earlier revision of this document specified a ~€4/month VPS to host a persi
 ### Technology Stack
 
 * **Frontend:** TypeScript 5 + React 19 on Vite 8, deployed as a fully static bundle. **MapLibre GL JS 6** renders the basemap from self-hosted PMTiles; **deck.gl 9.4** renders every data overlay on WebGL2, attached to the map via `@deck.gl/maplibre`. Data reaches the GPU as binary only: **Apache Arrow 21** buffers handed to deck.gl through its `data: {length, attributes}` binary form. **h3-js 4** provides the aggregation grid and all decode/parse work runs in Web Workers via Comlink. **DuckDB-WASM 1.32** is load-bearing rather than a convenience: it range-queries GeoParquet over HTTP directly from the browser, which is what allows the system to have no query backend at all. State is Zustand (UI state) plus TanStack Query (artifact fetching); charts are Observable Plot.
-* **Compute (there is no backend):** Python 3.13 running **exclusively inside ephemeral GitHub Actions jobs**. No server, no container, no process outlives the job that started it. Three job families: (1) **collectors**, one per upstream source, which fetch and write raw responses and nothing else — AIS is a bounded sampling window against the AISStream WebSocket rather than a persistent consumer; (2) **transforms**, written as SQL models in `dbt-duckdb`; (3) **bake**, which produces render-ready artifacts and publishes them. **DuckDB 1.5** is the entire engine, with the `spatial` (ST_* predicates and geometry I/O), `h3` (community), and `httpfs` extensions loaded — verified to cover the spatial and time-bucketing work that previously justified a database server. **Valhalla** runs as a throwaway container *inside* the bake job: build the graph from a Geofabrik Philippines extract, answer the route/isochrone questions the insights need, emit the results as artifacts, discard the graph.
+* **Compute (there is no backend):** Python 3.13 running **exclusively inside ephemeral GitHub Actions jobs**. No server, no container, no process outlives the job that started it. Four job families: (1) **collectors**, one per upstream source, which fetch and write raw responses and nothing else — AIS is a bounded sampling window against the AISStream WebSocket rather than a persistent consumer; (2) **transforms**, written as SQL models in `dbt-duckdb`; (3) **verify**, which scores prior outputs against ground truth and gates what may ship; (4) **bake**, which produces render-ready artifacts and publishes them. **DuckDB 1.5** is the entire engine, with the `spatial` (ST_* predicates and geometry I/O), `h3` (community), and `httpfs` extensions loaded — verified to cover the spatial and time-bucketing work that previously justified a database server. **Valhalla** runs as a throwaway container *inside* the bake job: build the graph from a Geofabrik Philippines extract, answer the route/isochrone questions the insights need, emit the results as artifacts, discard the graph.
 * **Database & Storage:** **No database server.** GeoParquet on object storage is the database and DuckDB is the engine — a decision the batch, monthly/seasonal access pattern permits and the zero-cost constraint requires. Four artifact formats: **GeoParquet** (analysis, and browser range-queries via DuckDB-WASM), **PMTiles** (vector basemap and overlays, plus raster pyramids for nightlights), **Cloud-Optimized GeoTIFF** (population and nightlight source rasters), and **Arrow IPC** (pre-baked animation frames). Two hosts, chosen because both were empirically confirmed to return `206 Partial Content` with working CORS, which PMTiles and Parquet range reads require: **GitHub Pages** for the browser-facing serving set (hard 1 GB ceiling; published via `upload-pages-artifact`/`deploy-pages` so artifacts never enter git history and never bloat the repository), and a **Hugging Face Dataset** repository for the raw landing zone and long-horizon history, which is versioned, far more capacious, and range-readable by the browser directly. GitHub Releases was tested and rejected: range requests work, but it sends no `Access-Control-Allow-Origin` header and its URLs are short-lived signed redirects, so browsers cannot read it.
 * **Infrastructure:** Three accounts, none of which has a payment method attached. **GitHub Actions** on a public repository is the scheduler, ETL runner, and CI — free and unlimited on standard runners, and hard-blocked rather than billed when quota is exhausted. **GitHub Pages** serves the application and the serving set over its CDN. **Hugging Face** holds the data archive. There is no VPS, no Kubernetes, no managed database, no CDN contract, and no custom domain. Observability is the Actions run log plus a `pipeline_health.json` artifact that the UI reads and displays, because log aggregation services meter and therefore bill.
 
@@ -87,12 +105,16 @@ Every source below is free at the point of use and requires no payment method, p
 | Nightlights | NASA Black Marble VNP46A3/A4 | WorldPop `ntl_viirs_g2` | Ships as HDF-EOS5, **not** COG; requires an Earthdata token and a conversion step |
 | Basemap, roads, ports | OpenStreetMap via Protomaps / Geofabrik PH extract | Overture Maps (places) | ODbL share-alike applies to derived geometry |
 | Admin boundaries | PSA/PhilGIS or GADM | — | Boundary vintage must be pinned; PH administrative units change |
+| **Ground truth** (census) | PSA Census of Population and Housing | — | Free and authoritative, but published in aggregate at administrative-unit level, so comparison against gridded WorldPop requires zonal aggregation, not point sampling |
+| **Ground truth** (weather) | Open-Meteo historical observations / archive | NOAA GFS analysis | Verification must compare a forecast against the observation for the *same* valid time, which is why forecasts are archived at issue time |
 
 ### System Architecture
 
-A five-stage, one-directional batch pipeline with **no server, no database, and no API anywhere in it**. Two constraints converge on the same shape. First, no free-tier upstream API can survive being in the user request path. Second, nothing may cost money, which rules out anything long-lived. Both are satisfied by making the read path entirely static: the browser fetches immutable, content-hashed artifacts from a CDN, queries them in place with DuckDB-WASM, and never contacts a third party or an origin server.
+A six-stage, one-directional batch pipeline with **no server, no database, and no API anywhere in it**. Two constraints converge on the same shape. First, no free-tier upstream API can survive being in the user request path. Second, nothing may cost money, which rules out anything long-lived. Both are satisfied by making the read path entirely static: the browser fetches immutable, content-hashed artifacts from a CDN, queries them in place with DuckDB-WASM, and never contacts a third party or an origin server.
 
-Stages 1 through 4 exist only while a scheduled job is running. Stage 5 is a set of files.
+Stage 4 is the accuracy guarantee made structural. Verification is a pipeline stage with the power to withhold, not a report generated alongside the output, because a guarantee that cannot block a release is not a guarantee. Nothing reaches stage 5 without a current accuracy score.
+
+Stages 1 through 5 exist only while a scheduled job is running. Stage 6 is a set of files.
 
 ```
  ┌─ STAGE 1 · COLLECT ───────────────────────────────────────────────────┐
@@ -103,7 +125,7 @@ Stages 1 through 4 exist only while a scheduled job is running. Stage 5 is a set
  │  adsb.lol    cron, viewport-scoped                     ─┤             │
  │  Open-Meteo  cron hourly                               ─┼─>  raw/     │
  │  JTWC/PAGASA cron 3-hourly, bulletin text              ─┤    on HF    │
- │  IBTrACS / WorldPop / Black Marble   cron monthly      ─┘    dataset  │
+ │  IBTrACS / WorldPop / Black Marble / PSA census        ─┘    dataset  │
  │                                                                       │
  │  Append-only. One object per fetch, keyed by request hash + time.     │
  └───────────────────────────────────────────────────────────────────────┘
@@ -125,24 +147,38 @@ Stages 1 through 4 exist only while a scheduled job is running. Stage 5 is a set
  │  graph built and discarded inside this job.                           │
  │                                                                       │
  │  Every output carries inputs, parameters, and a confidence band.      │
- │  No LLM participates in producing a number. (See Out-of-Scope.)       │
+ │  No LLM produces or adjusts a number in v1 (deferred, not banned).    │
  └───────────────────────────────────────────────────────────────────────┘
                                  │
- ┌─ STAGE 4 · BAKE ──────────────┴───────────────────────────────────────┐
- │  The performance and budget boundary. Converts curated data into      │
+ ┌─ STAGE 4 · VERIFY ────────────┴───────────────────────────────────────┐
+ │  Enforces the accuracy guarantee. Nothing reaches the browser         │
+ │  without passing through here.                                        │
+ │                                                                       │
+ │  Score prior outputs against ground truth that has since arrived:     │
+ │    forecast     ─>  later Open-Meteo observations                     │
+ │    storm track  ─>  IBTrACS / PAGASA best track                       │
+ │    density      ─>  PSA census                                        │
+ │  Compare against the naive baseline (climatology / persistence).      │
+ │                                                                       │
+ │  Emits accuracy.json: error bounds, skill scores, sample sizes.       │
+ │  Any insight outside its published bound is WITHHELD, not shown.      │
+ └───────────────────────────────────────────────────────────────────────┘
+                                 │
+ ┌─ STAGE 5 · BAKE ──────────────┴───────────────────────────────────────┐
+ │  The performance and budget boundary. Converts verified data into     │
  │  render-ready artifacts sized to declared, CI-asserted limits:        │
  │    · PMTiles      vector overlays + basemap + nightlight raster       │
  │    · Arrow IPC    decimated, time-indexed trajectory frames           │
  │    · COG          population / nightlight rasters                     │
  │    · GeoParquet   analytical slices for DuckDB-WASM                   │
- │    · insights.json + pipeline_health.json                             │
+ │    · insights.json + accuracy.json + pipeline_health.json             │
  │                                                                       │
  │  Emits serving/manifest.json: content-hashed URLs, schema version,    │
  │  per-layer observed_at, freshness state. Fails the build if the       │
  │  serving set exceeds 1 GB or a frame budget is breached.              │
  └───────────────────────────────────────────────────────────────────────┘
                                  │
- ┌─ STAGE 5 · SERVE ─────────────┴───────────────────────────────────────┐
+ ┌─ STAGE 6 · SERVE ─────────────┴───────────────────────────────────────┐
  │  Static only. No API, no origin server, no query backend.             │
  │                                                                       │
  │  GitHub Pages CDN  (serving set, ≤1 GB)   ─┬─>  browser               │
@@ -161,12 +197,13 @@ Stages 1 through 4 exist only while a scheduled job is running. Stage 5 is a set
 
 0. **Nothing may incur a charge.** No payment method, no metered service, no idle compute. A design that cannot be delivered at $0.00 is not delivered. See § Hard Constraint: Zero Cost.
 1. **The browser never calls a third-party API.** Credentials, quotas, and licence obligations live inside the collector jobs. AISStream explicitly forbids browser connections; treating this as a general rule keeps every other source inside one enforcement point.
-2. **Raw data is immutable.** Stage 1 output is append-only and is never edited or deleted. Every later stage is a pure function of `raw/` plus pinned code, so any artifact can be rebuilt from scratch without re-hitting an upstream API.
+2. **Raw data is immutable.** Stage 1 output is append-only and is never edited or deleted. Every later stage is a pure function of `raw/` plus pinned code, so any artifact can be rebuilt from scratch without re-hitting an upstream API. This is what makes the reproducibility half of the accuracy guarantee enforceable rather than aspirational.
 3. **The read path never depends on upstream liveness.** A failed poll leaves the last good artifact serving, correctly labelled as stale.
 4. **Binary end to end.** GeoJSON is an interchange format at source boundaries only. It must not appear between the bake stage and the GPU.
 5. **Projections are explicit.** EPSG:4326 for storage and interchange; EPSG:3857 for display only; **H3 (res 5–8) for anything area-normalized**, because the Philippines spans enough latitude that densities computed in 4326 or 3857 are wrong in ways that look plausible.
 6. **Time is UTC in storage, Asia/Manila in presentation.** Agricultural and typhoon-preparation decisions are made against the local calendar, so the conversion boundary must be a single, tested layer.
 7. **Every rendered number is traceable** to its source artifact, that artifact's `observed_at`, and the pipeline run that produced it.
+8. **No insight ships without a current accuracy score.** Every published figure carries a verified error bound and a skill score against its naive baseline. An insight whose bound is breached, or whose verification is stale, is withheld and labelled — never served unmarked. Verification runs as a gating stage, so this cannot be bypassed by a code path that forgets to check.
 
 ### Risks and Mitigations
 
@@ -176,10 +213,12 @@ Stages 1 through 4 exist only while a scheduled job is running. Stage 5 is a set
   * **Mitigation:** Decouple availability from freshness, and make freshness visible. Because the read path serves static artifacts (invariant 3), an upstream outage degrades data age, not uptime. On top of that: (a) every adapter declares its documented quota and requests pass through a shared token-bucket limiter configured to those numbers (Open-Meteo 600/min · 5k/hr · 10k/day, adsb.lol ~1/sec, OpenSky's per-endpoint credit buckets, AISStream's 3-connection ceiling); (b) every upstream response is written to `raw/` before parsing, so backfills, reprocessing, and tests replay from disk and never re-consume quota — CI is forbidden from touching a live upstream and uses recorded fixtures; (c) two independent providers for each critical domain, with documented failover (weather → Open-Meteo then NOAA GFS; flights → adsb.lol then OpenSky; cyclone tracks → JTWC then PAGASA bulletin parse); (d) retries use exponential backoff with full jitter, honour `Retry-After` and `X-Rate-Limit-*`, never retry a 4xx other than 429, and trip a circuit breaker that parks a source rather than hammering it; (e) AIS has no viable second source, so the design accepts degradation there explicitly — coverage gaps are surfaced, not interpolated over; (f) each layer renders its own `observed_at` and a staleness badge derived from the manifest, and a layer past its freshness threshold is drawn in an unmistakable stale state rather than silently shown as current; (g) pipeline failures alert through GitHub Actions but cannot fail the deployment.
 * **Risk:** The project incurs a charge — the outcome the zero-cost constraint exists to prevent. The realistic mechanisms are a free tier silently converting to metered billing, a service quietly requiring a card, storage creeping past an allowance, or a runaway job.
   * **Mitigation:** Remove the billing relationship rather than manage it, and make overage a build failure. Specifically: (a) no payment method is attached to any account used by this project, so GitHub's documented behaviour is to block on quota exhaustion instead of invoicing — a hard stop is the intended failure mode; (b) only GitHub Actions, GitHub Pages, and Hugging Face are used, none of which can produce an invoice for this workload, and Cloudflare R2 was rejected specifically because it requires a card and meters per-operation; (c) nothing runs between jobs, so there is no idle cost to forget about; (d) size and quota ceilings are asserted in CI — the bake job fails if the serving set exceeds 1 GB, and a retention-and-compaction step bounds the archive, so an overrun breaks a pull request rather than production; (e) collector jobs declare `timeout-minutes` and `concurrency` groups so a hung job cannot spin; (f) larger GitHub-hosted runners are always billable even on public repositories and are therefore prohibited outright — standard runners only; (g) no custom domain, since domains are the one component with no free tier at all.
+* **Risk:** The accuracy guarantee is a commitment the project can breach, and three specific things make it hard to honour. Verification needs each forecast *as it was issued*, not the latest revision, so a pipeline that only retains current data can never score itself. Census figures are published as administrative-unit aggregates while WorldPop is a grid, so a careless comparison measures the modifiable areal unit problem and calls it error. And sampled mobility data may not supply enough observations in a given cell to measure accuracy at all, let alone bound it.
+  * **Mitigation:** Make verification structural rather than reported. Specifically: (a) forecasts are archived at issue time together with their valid-time range, which is precisely what invariant 2 (immutable raw data) buys — without it the guarantee would be unverifiable by construction; (b) census comparison is done by aggregating the grid up to the PSA administrative unit and comparing at that level with the unit vintage pinned, never by point-sampling and never below the census publication level; (c) initial bounds are established by backtesting over archived history (IBTrACS for tracks, the weather archive for forecasts) rather than asserted, and each insight's specification declares the minimum sample size its bound requires; (d) where the data cannot support a bound, the insight is withheld and the reason shown — "this cannot currently be guaranteed" is a legitimate product state and is surfaced rather than hidden; (e) skill against climatology or persistence is always reported next to absolute error, because a small absolute error can still be worthless; (f) verification is a gating pipeline stage (invariant 8), so an insight cannot ship merely because some code path forgot to check; (g) accuracy specifications and verification code are versioned in the repository and a change to a published bound requires review — loosening a bound must be at least as visible as breaching one.
 * **Risk:** Licence terms disqualify the free data sources the moment the product is commercial — Open-Meteo's free tier and OpenSky are both non-commercial only, and adsb.lol and OpenStreetMap are ODbL share-alike.
   * **Mitigation:** Treat this as an architectural concern rather than a legal footnote. Each source adapter carries a machine-readable licence and commercial-use flag; a CI check fails if a source is used in a code path marked commercial. Required attributions are generated from that registry into the UI, so they cannot drift out of date. Note the direct tension with the zero-cost constraint: the escape hatch for commercial use is Open-Meteo's paid `customer-api` endpoint and a licensed AIS or ADS-B feed, which by definition ends the $0.00 guarantee. The architecture keeps that swap cheap in engineering terms — one module per source — but it must be a deliberate decision to start spending, never an accident. Until then, the project is non-commercial, and the UI must not be placed behind a subscription or carry advertising, either of which would breach Open-Meteo's terms on its own.
 * **Risk:** Terrestrial AIS and ADS-B coverage is uneven across an archipelago, and nightlights are attenuated by cloud cover during exactly the typhoon conditions the project cares about. Sparse data looks identical to genuinely low activity, which would produce confidently wrong insights. **Zero-cost collection makes this materially worse:** without a persistent consumer, AIS arrives as periodic sampling windows, so an absent vessel may simply have moved between samples.
-  * **Mitigation:** Model coverage as a first-class dimension rather than assuming completeness. Every H3 cell and time bucket stores an observation count, a sampled-duration fraction, and a receiver-coverage estimate alongside its value. Insights are computed only over windows whose sampled fraction exceeds a documented threshold, carry a confidence band, and are suppressed rather than extrapolated below it. Because the product reasons in months and seasons, sampling is statistically adequate for route-frequency and port-activity measures provided sample windows are scheduled at varying times of day to avoid aliasing against tidal, shift, and diurnal patterns — a fixed hourly offset would bias every measure. Vessel tracks are presented explicitly as sampled positions, never interpolated into continuous voyages. Black Marble cloud-cover and quality flags are retained and applied, and nightlight comparisons use monthly (VNP46A3) or annual (VNP46A4) composites instead of daily scenes. The UI distinguishes "no activity" from "no data" visually.
+  * **Mitigation:** Model coverage as a first-class dimension rather than assuming completeness. Every H3 cell and time bucket stores an observation count, a sampled-duration fraction, and a receiver-coverage estimate alongside its value. Insights are computed only over windows whose sampled fraction exceeds a documented threshold, carry a confidence band, and are suppressed rather than extrapolated below it. This threshold is also what keeps the accuracy guarantee honest: where coverage is too sparse to measure error, no bound is published and the insight is withheld. Because the product reasons in months and seasons, sampling is statistically adequate for route-frequency and port-activity measures provided sample windows are scheduled at varying times of day to avoid aliasing against tidal, shift, and diurnal patterns — a fixed hourly offset would bias every measure. Vessel tracks are presented explicitly as sampled positions, never interpolated into continuous voyages. Black Marble cloud-cover and quality flags are retained and applied, and nightlight comparisons use monthly (VNP46A3) or annual (VNP46A4) composites instead of daily scenes. The UI distinguishes "no activity" from "no data" visually.
 * **Risk:** The free platform itself changes the rules. Concretely: scheduled workflows in a public repository are automatically disabled after 60 days without repository activity, which would silently stop all data collection; GitHub Actions runners are Azure-hosted, and OpenSky documents that it may block hyperscaler IP ranges; and GitHub Pages' 1 GB site ceiling is a hard wall, not a soft one.
   * **Mitigation:** Each of these is a known failure mode with a specific countermeasure. A weekly keepalive job calls `gh workflow enable` on every scheduled workflow, which resets the 60-day inactivity timer without needing a commit, and the freshness badge in the UI surfaces a stalled pipeline within one cycle. adsb.lol is the primary flight source precisely because it publishes no hyperscaler restriction; OpenSky is treated as an optional cross-check whose loss degrades confidence rather than breaking a layer, and if it blocks the runner the collector records that as a source outage instead of retrying. The 1 GB ceiling is enforced at bake time with headroom, and the archive-versus-serving split exists so growth lands in Hugging Face — where capacity is generous — rather than against the Pages limit. Because the whole platform choice is a risk concentration, artifact formats were deliberately kept host-agnostic: PMTiles, GeoParquet, COG, and Arrow IPC need only HTTP range requests and CORS, so relocating to another free static host is a URL change in the manifest.
 
@@ -187,5 +226,5 @@ Stages 1 through 4 exist only while a scheduled job is running. Stage 5 is a set
 
 * **Phase 1 (Map Generation and Initial Data Overlay):** Develop the core web app with a free ship and flight path data overlay.
 * **Phase 2 (Secondary and Live Data Overlay):** Estimate population additions from WorldPop (with Satellite Nightlight visualization) and overlay live weather data onto the map.
-* **Phase 3 (Processing and Insights Generation):** Generate useful business insights from the available data. Ensure insights are configurable per specific site.
-* **Phase 4 (Testing & Launch):** Conduct quality assurance, refine rendering performance, execute deployment, and gather initial user feedback.
+* **Phase 3 (Processing and Insights Generation):** Generate useful business insights from the available data. Ensure insights are configurable per specific site. Establish each insight's accuracy specification by backtesting against archived history, and build the verification stage that gates them — an insight without a measured bound is not finished.
+* **Phase 4 (Testing & Launch):** Conduct quality assurance, refine rendering performance, execute deployment, and gather initial user feedback. Publish the accuracy report and confirm that a deliberately breached bound correctly withholds its insight.
