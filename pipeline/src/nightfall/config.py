@@ -96,6 +96,16 @@ class Settings(BaseSettings):
         return self.data_root / "serving"
 
     @property
+    def duckdb_path(self) -> Path:
+        """The transform's scratch catalogue.
+
+        Inside the data root rather than beside the working directory. dbt resolves the
+        profile's relative default against wherever it was launched from, which silently puts
+        the catalogue — and the run's views — somewhere other than the run's own data.
+        """
+        return self.data_root / "nightfall.duckdb"
+
+    @property
     def health_path(self) -> Path:
         return self.serving_dir / "pipeline_health.json"
 

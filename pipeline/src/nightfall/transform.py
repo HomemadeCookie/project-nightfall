@@ -12,6 +12,7 @@ gain. History lives in the Hugging Face archive and is rebuilt on demand, not on
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterator, Sequence
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -174,6 +175,10 @@ def transform(
 ) -> dict[str, object]:
     """Build the curated models, then test them. Returns the variables used, for the log."""
     variables = dbt_vars(settings, lookback_hours=lookback_hours, now=now)
+    # An environment variable because that is the only channel `profiles.yml` has; `setdefault`
+    # so an operator pointing dbt somewhere else still wins.
+    settings.data_root.mkdir(parents=True, exist_ok=True)
+    os.environ.setdefault("NIGHTFALL_DUCKDB_PATH", str(settings.duckdb_path.resolve()))
     # DuckDB's COPY will not create intermediate directories, so the versioned root has to
     # exist before dbt writes into it.
     Path(str(variables["curated_root"]), f"v{SCHEMA_VERSION}").mkdir(parents=True, exist_ok=True)

@@ -74,12 +74,21 @@ def sweep_payload(document: dict[str, object], *, sweep: int, interval_s: float)
     return json.dumps(moved).encode("utf-8")
 
 
+#: Where the fixture vessels start, and how far apart they are placed, as (longitude,
+#: latitude). Callers that need them somewhere specific say so: the demo puts them in the
+#: Manila Bay approaches, where a reader expects to find shipping.
+AIS_ORIGIN = (121.0, 12.0)
+AIS_SPACING = (0.2, 0.2)
+
+
 def ais_frames(
     *,
     vessels: int = 3,
     reports: int = 5,
     interval_s: float = 30.0,
     start: datetime = FIXTURE_AT,
+    origin: tuple[float, float] = AIS_ORIGIN,
+    spacing: tuple[float, float] = AIS_SPACING,
 ) -> bytes:
     """A window of enveloped AISStream frames, in the landing zone's newline-delimited form.
 
@@ -93,6 +102,8 @@ def ais_frames(
     lines: list[bytes] = []
     for vessel in range(vessels):
         mmsi = 548_000_000 + vessel
+        lon = origin[0] + vessel * spacing[0]
+        lat = origin[1] + vessel * spacing[1]
         for report in range(reports):
             received = start.timestamp() + report * interval_s
             frame = {
@@ -100,14 +111,14 @@ def ais_frames(
                 "MetaData": {
                     "MMSI": mmsi,
                     "ShipName": f"MV FIXTURE {vessel}",
-                    "latitude": 12.0 + vessel * 0.2,
-                    "longitude": 121.0 + vessel * 0.2,
+                    "latitude": lat,
+                    "longitude": lon,
                 },
                 "Message": {
                     "PositionReport": {
                         "UserID": mmsi,
-                        "Latitude": 12.0 + vessel * 0.2 + report * 0.01,
-                        "Longitude": 121.0 + vessel * 0.2 + report * 0.012,
+                        "Latitude": lat + report * 0.01,
+                        "Longitude": lon + report * 0.012,
                         "Sog": 9.5,
                         "Cog": 48.0,
                         "NavigationalStatus": 0,
@@ -137,17 +148,24 @@ def ais_frames(
     return b"\n".join(lines) + b"\n"
 
 
-def seed_ais_window(settings: Settings, *, window_s: float = 180.0) -> str:
+def seed_ais_window(
+    settings: Settings,
+    *,
+    window_s: float = 180.0,
+    start: datetime = FIXTURE_AT,
+    origin: tuple[float, float] = AIS_ORIGIN,
+    spacing: tuple[float, float] = AIS_SPACING,
+) -> str:
     """Write one AIS sampling window into the landing zone."""
     from nightfall.store import LocalRawStore
 
     return LocalRawStore(settings.raw_root).put(
         source="aisstream",
         request_key=f"stream/ph/{window_s:.0f}s",
-        body=ais_frames(),
+        body=ais_frames(start=start, origin=origin, spacing=spacing),
         # The object is stamped with the moment the window closed, which is what the transform
         # subtracts the declared window length from.
-        observed_at=FIXTURE_AT + timedelta(seconds=window_s),
+        observed_at=start + timedelta(seconds=window_s),
         content_type="application/x-ndjson",
     )
 

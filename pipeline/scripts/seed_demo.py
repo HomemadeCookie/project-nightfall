@@ -43,12 +43,25 @@ LOG_FORMAT = "%(asctime)sZ %(levelname)s %(name)s %(message)s"
 SWEEPS = 8
 SWEEP_INTERVAL_S = 20.0
 
+#: The vessels are put in the Manila Bay approaches, drifting up the bay towards the harbour,
+#: and given the same window as the aircraft. Their defaults sit offshore of Mindoro and at the
+#: fixture's own instant, which is fine for a unit test and wrong for a demo: the two layers
+#: would share neither the opening viewport nor a moment in time, so a reader scrubbing through
+#: the window would never see aircraft and vessels at once and would reasonably conclude the
+#: vessel layer was broken.
+AIS_WINDOW_S = 180.0
+AIS_ORIGIN = (120.62, 14.40)
+AIS_SPACING = (0.1, 0.08)
+
 
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
     logging.Formatter.converter = time.gmtime
 
-    settings = Settings(data_root=Path("build"), run_id="demo")
+    # Anchored to the repository rather than the working directory. `build/` is where the dev
+    # server and the contract suite both look, and a relative path quietly produces a second
+    # serving set that nothing reads when this is run from anywhere but the root.
+    settings = Settings(data_root=PIPELINE_ROOT.parent / "build", run_id="demo")
     if settings.data_root.exists():
         shutil.rmtree(settings.data_root)
 
@@ -60,7 +73,13 @@ def main() -> int:
     document["now"] = (now - timedelta(seconds=SWEEPS * SWEEP_INTERVAL_S)).timestamp() * 1000.0
 
     seed_window(settings, document, sweeps=SWEEPS, interval_s=SWEEP_INTERVAL_S)
-    seed_ais_window(settings)
+    seed_ais_window(
+        settings,
+        window_s=AIS_WINDOW_S,
+        start=now - timedelta(seconds=AIS_WINDOW_S),
+        origin=AIS_ORIGIN,
+        spacing=AIS_SPACING,
+    )
     transform(settings, project_dir=PIPELINE_ROOT / "transform", now=now)
     manifest = bake(settings, now=now)
 
