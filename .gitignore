@@ -1,0 +1,32 @@
+# Data never enters git history (.cursorrules § 4). The serving set is published as a Pages
+# artifact and the archive lives in the Hugging Face dataset repository.
+build/
+*.duckdb
+*.duckdb.wal
+*.parquet
+*.pmtiles
+*.arrow
+*.tif
+
+# Credentials
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# dbt
+target/
+dbt_packages/
+logs/
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
