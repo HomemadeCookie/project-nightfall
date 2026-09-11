@@ -47,10 +47,10 @@ Businesses in the Philippines often take losses as a given during every typhoon 
 ## Implementation Details
 
 ### Technology Stack
-* **Frontend:** Next.js and Tailwind CSS for the web application UI. Deck.gl or Mapbox GL JS for rendering high-performance animated map overlays.
-* **Backend:** Python with FastAPI for handling heavy data processing, insights generation, and serving APIs. 
-* **Database & Storage:** PostgreSQL with the PostGIS extension for spatial data querying, and Supabase for authentication and real-time database syncing. BigQuery for storing and querying massive datasets (like historical mobility and weather logs).
-* **Infrastructure:** Docker for containerization to ensure consistency across environments.
+* **Frontend:** To be decided.
+* **Backend:** To be decided.
+* **Database & Storage:** To be decided.
+* **Infrastructure:** To be decided.
 
 ### System Architecture
 A containerized microservices architecture. Python worker scripts will handle the scheduled ingestion and processing of satellite nightlight and weather data, converting them into optimized spatial formats (like GeoJSON). The Next.js frontend will query the PostgreSQL and BigQuery databases via the FastAPI backend to dynamically generate site-specific insights and render the animated mapping interface on the client side.
