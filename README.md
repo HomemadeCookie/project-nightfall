@@ -205,6 +205,24 @@ Stages 1 through 5 exist only while a scheduled job is running. Stage 6 is a set
 7. **Every rendered number is traceable** to its source artifact, that artifact's `observed_at`, and the pipeline run that produced it.
 8. **No insight ships without a current accuracy score.** Every published figure carries a verified error bound and a skill score against its naive baseline. An insight whose bound is breached, or whose verification is stale, is withheld and labelled — never served unmarked. Verification runs as a gating stage, so this cannot be bypassed by a code path that forgets to check.
 
+### Running It
+
+The repository holds two programs. `pipeline/` is the scheduled job — Python, driven by `uv`, entered through the `nightfall` CLI. `web/` is the static application — TypeScript, driven by `npm`. They meet at one place only: the serving set in `build/serving`, which the pipeline writes and the app reads through `serving/manifest.json`.
+
+```sh
+# A serving set with no network access and no API keys, from the recorded fixture.
+uv run --project pipeline python pipeline/scripts/seed_demo.py
+
+# The app, serving that set at http://127.0.0.1:5173/
+cd web && npm install && npm run dev
+```
+
+A real run replaces the first command with the pipeline proper: `nightfall collect adsb_lol`, then `transform`, then `bake`. Collecting vessel positions additionally needs `NIGHTFALL_AISSTREAM_API_KEY`, and archiving needs `NIGHTFALL_HF_TOKEN`; both are free to obtain and neither is required to render a map. What the scheduled job does, in order, is `.github/workflows/pipeline.yml`.
+
+Two absences are deliberate rather than broken. The basemap is built by a separate monthly job, so until it has run the app draws positions on a plain background and says so — the mobility data is the product and the basemap is context. And individual tracks are drawn from zoom 9 up; the area summaries that belong to wider views are a later phase, so below that zoom the app states that rather than showing an empty map.
+
+The gates, all of which CI runs: `uv run ruff check`, `uv run mypy`, and `uv run pytest` in `pipeline/`; `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` in `web/`. One further suite, `npm run test:contract`, runs against a real baked serving set rather than a fixture, because the Arrow layout is a contract between two languages and a mistake in it does not raise — it silently shifts every vertex.
+
 ### Risks and Mitigations
 
 * **Risk:** Processing and animating multiple heavy spatial datasets (mobility paths + weather + nightlights) can cause severe UI lag and browser crashing.
