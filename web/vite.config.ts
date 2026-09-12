@@ -97,14 +97,6 @@ export default defineConfig({
   worker: {
     format: 'es',
   },
-  optimizeDeps: {
-    // MapLibre parses tiles in its own worker, which it loads as a sibling file. The dep
-    // optimizer rewrites the entry but does not emit that sibling, so in development every
-    // tile request is made and none is ever parsed: a blank basemap, and no error anywhere
-    // except one line on the dev server's own console. Excluded so the package is served as
-    // published. The production bundle is unaffected — this optimizer only runs in dev.
-    exclude: ['maplibre-gl'],
-  },
   test: {
     // `test/` holds the contract suite, which needs a real baked artifact and so runs as a
     // separate step after the pipeline rather than on every `npm test`.

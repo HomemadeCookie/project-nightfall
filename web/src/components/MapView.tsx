@@ -11,7 +11,20 @@
 import type { Layer as DeckLayer, PickingInfo } from '@deck.gl/core';
 import { MapLibreOverlay } from '@deck.gl/maplibre';
 // maplibre-gl 6 publishes named exports only; there is no namespace default to reach through.
-import { addProtocol, Map as MapLibreMap, NavigationControl, removeProtocol } from 'maplibre-gl';
+import {
+  addProtocol,
+  Map as MapLibreMap,
+  NavigationControl,
+  removeProtocol,
+  setWorkerUrl,
+} from 'maplibre-gl';
+// Bundled here rather than left to MapLibre to find. It derives its worker's URL at runtime,
+// from `import.meta.url`, assuming the file sits next to the module that asked for it — which
+// is true of the published package and false of every bundle, so the request lands on a
+// hashed asset path that does not exist and the host answers with HTML. The tiles are then
+// fetched and never parsed: a blank basemap, and no error except a MIME complaint about a
+// script nobody wrote. Asking the bundler for the URL makes it a build-time fact.
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { Protocol } from 'pmtiles';
 import { useEffect, useRef } from 'react';
 
@@ -34,6 +47,8 @@ import { MODE_SEA, readString } from '../workers/bundles';
 import { loadPoints, loadTracks } from '../workers/client';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
+
+setWorkerUrl(maplibreWorkerUrl);
 
 export const animationClock = new AnimationClock(PLAYBACK_RATE);
 
