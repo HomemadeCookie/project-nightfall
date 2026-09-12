@@ -12,10 +12,20 @@
  */
 import type { StyleSpecification } from 'maplibre-gl';
 
-const LAND = '#12161f';
-const WATER = '#0b0e14';
-const BOUNDARY = '#2a3240';
-const ROAD = '#232b38';
+/**
+ * The palette.
+ *
+ * Dark, because the overlay is the product and a bright basemap would compete with it for
+ * attention. But land and water have to be told apart at a glance: the first version differed
+ * by seven levels of luminance, which made the coastline of an archipelago something you had
+ * to hunt for, and geographic context nobody can see is not context. Water is pushed darker
+ * and land lighter, and roads are dimmer than the coastline they sit inside, so the order of
+ * what the eye finds is tracks, then coast, then everything else.
+ */
+const LAND = '#1a212e';
+const WATER = '#060910';
+const BOUNDARY = '#303a4c';
+const ROAD = '#222b3a';
 
 export function blankStyle(): StyleSpecification {
   return {

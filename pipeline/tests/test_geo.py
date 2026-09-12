@@ -5,7 +5,9 @@ from __future__ import annotations
 import pytest
 
 from nightfall.geo import (
+    BASEMAP_BBOX,
     PH_AOI,
+    VIEW_PAN_MARGIN_DEG,
     BoundingBox,
     coverage_circles,
     haversine_km,
@@ -17,6 +19,25 @@ def test_bounding_box_rejects_an_inverted_span() -> None:
         BoundingBox(west=127.0, south=4.0, east=116.0, north=21.5)
     with pytest.raises(ValueError, match="latitude span"):
         BoundingBox(west=116.0, south=21.5, east=127.0, north=4.0)
+
+
+def test_growing_a_box_clamps_to_valid_coordinates() -> None:
+    """A margin must not produce a box that cannot exist.
+
+    The basemap bbox is the AOI plus the map's pan margin, and a future AOI near a pole or the
+    antimeridian would otherwise construct an invalid box — which `BoundingBox` rejects, so the
+    failure would be an exception in the middle of a scheduled run rather than a clamp.
+    """
+    assert PH_AOI.grown(0.0) == PH_AOI
+    polar = BoundingBox(west=-179.0, south=-89.0, east=179.0, north=89.0).grown(5.0)
+    assert (polar.west, polar.south, polar.east, polar.north) == (-180.0, -90.0, 180.0, 90.0)
+
+
+def test_the_basemap_covers_everywhere_the_map_can_be_panned() -> None:
+    """The extract is cut to the pan limit, so a mismatch shows as a visible tile edge."""
+    assert PH_AOI.grown(VIEW_PAN_MARGIN_DEG) == BASEMAP_BBOX
+    assert BASEMAP_BBOX.west < PH_AOI.west
+    assert BASEMAP_BBOX.north > PH_AOI.north
 
 
 def test_haversine_against_a_known_distance() -> None:

@@ -40,6 +40,15 @@ class BoundingBox:
     def centre(self) -> tuple[float, float]:
         return ((self.west + self.east) / 2.0, (self.south + self.north) / 2.0)
 
+    def grown(self, degrees: float) -> BoundingBox:
+        """The same box with a margin on every side, clamped to valid coordinates."""
+        return BoundingBox(
+            west=max(-180.0, self.west - degrees),
+            south=max(-90.0, self.south - degrees),
+            east=min(180.0, self.east + degrees),
+            north=min(90.0, self.north + degrees),
+        )
+
 
 #: The Philippine Area of Responsibility, trimmed to the landmass and its shipping approaches.
 #: Deliberately wider than the archipelago so that vessels and aircraft are captured before
@@ -56,6 +65,21 @@ PH_AOI = BoundingBox(west=116.0, south=4.0, east=127.0, north=21.5)
 DEFAULT_VIEW_LON = 120.98
 DEFAULT_VIEW_LAT = 14.58
 DEFAULT_VIEW_ZOOM = 9.0
+
+#: How far outside the area of interest the map lets you pan. The app applies the same margin
+#: to the manifest's bounds; the two must agree, because the basemap is cut to this box and
+#: panning further would reach the edge of the tiles.
+VIEW_PAN_MARGIN_DEG = 2.0
+
+#: The basemap extract. Cut to exactly what the map can be panned to — no further, since every
+#: tile is transfer someone else pays for, and no less, since the edge would be visible.
+BASEMAP_BBOX = PH_AOI.grown(VIEW_PAN_MARGIN_DEG)
+
+#: Zoom ceiling for the basemap. The overlay draws individual tracks from zoom 9, and at zoom
+#: 10 the basemap is already a legible coastline-and-roads reference. Carrying it to 14 would
+#: multiply the extract by more than an order of magnitude for detail this product never asks a
+#: question about; MapLibre scales vector geometry past the ceiling, so zooming in stays sharp.
+BASEMAP_MAX_ZOOM = 10
 
 
 def haversine_km(lon1: float, lat1: float, lon2: float, lat2: float) -> float:

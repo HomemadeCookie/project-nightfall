@@ -100,12 +100,34 @@ jobs:
       - name: Bake
         run: uv run --project pipeline nightfall bake
 
-      - name: Fetch the basemap
-        # Built by `build-basemap.yml` and stored in the archive, because Pages has no way to
-        # carry a large asset between deployments. Absence is handled: the app draws positions
-        # without geographic context and says why.
+      # The basemap is cut from a Protomaps planet build over HTTP range requests — about 20 MB
+      # and a few seconds — and cached by month, so that happens once a month rather than on
+      # every run. Keyed by the month rather than restored by prefix on purpose: a prefix match
+      # would keep serving last year's coastlines forever, because a cache hit means no rebuild.
+      - name: Resolve the basemap's cache month
+        id: month
+        run: echo "value=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the cached basemap
+        uses: actions/cache@v6
+        with:
+          path: build/basemap
+          key: basemap-v1-${{ hashFiles('pipeline/src/nightfall/geo.py') }}-${{ steps.month.outputs.value }}
+
+      - name: Install pmtiles
+        run: |
+          version=1.31.2
+          curl -fsSL -o pmtiles.tar.gz \
+            "https://github.com/protomaps/go-pmtiles/releases/download/v${version}/go-pmtiles_${version}_Linux_x86_64.tar.gz"
+          tar -xzf pmtiles.tar.gz pmtiles
+          sudo install -m 0755 pmtiles /usr/local/bin/pmtiles
+          pmtiles version
+
+      - name: Build the basemap
+        # Absence is handled: the app draws positions without geographic context and says why,
+        # so a Protomaps outage costs the map its coastlines and not its observations.
         continue-on-error: true
-        run: uv run --project pipeline python pipeline/scripts/fetch_basemap.py
+        run: uv run --project pipeline python pipeline/scripts/build_basemap.py
 
       - run: npm ci
         working-directory: web

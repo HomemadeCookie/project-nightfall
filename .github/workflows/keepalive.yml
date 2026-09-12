@@ -30,7 +30,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          for workflow in pipeline.yml build-basemap.yml keepalive.yml; do
+          for workflow in pipeline.yml keepalive.yml; do
             # `enable` on an already-enabled workflow is a no-op, so this needs no condition.
             gh workflow enable "$workflow" && echo "enabled $workflow"
           done
