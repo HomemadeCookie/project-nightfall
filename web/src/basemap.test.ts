@@ -5,7 +5,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { basemapAvailable } from './basemap';
+import { basemapAvailable, basemapStyle } from './basemap';
 
 const URL_UNDER_TEST = 'https://example.invalid/serving/basemap.pmtiles';
 
@@ -27,6 +27,31 @@ function respond(body: BodyInit, status: number): void {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe('basemapStyle', () => {
+  const style = basemapStyle('/serving/basemap.pmtiles');
+
+  it('asks every fill for polygons, because the water layer also carries rivers as lines', () => {
+    const fills = style.layers.filter((layer) => layer.type === 'fill');
+    expect(fills.map((layer) => layer.id)).toEqual(['earth', 'water']);
+    for (const layer of style.layers) {
+      if (layer.type !== 'fill') continue;
+      expect(layer.filter, layer.id).toEqual(['==', '$type', 'Polygon']);
+    }
+  });
+
+  it('draws only provinces and countries, not the municipal web', () => {
+    const boundaries = style.layers.find((layer) => layer.id === 'boundaries');
+    if (boundaries?.type !== 'line') throw new Error('expected a line layer');
+    expect(boundaries.filter).toEqual(['in', 'kind', 'country', 'region']);
+  });
+
+  it('draws the national road network rather than every sealed road', () => {
+    const roads = style.layers.find((layer) => layer.id === 'roads');
+    if (roads?.type !== 'line') throw new Error('expected a line layer');
+    expect(roads.filter).toEqual(['in', 'kind_detail', 'motorway', 'trunk', 'primary']);
+  });
 });
 
 describe('basemapAvailable', () => {

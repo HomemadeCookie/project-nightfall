@@ -10,7 +10,19 @@
  * product and the basemap is context. Failing hard here would let a scheduled basemap job
  * take down a page whose data is perfectly fine.
  */
-import type { StyleSpecification } from 'maplibre-gl';
+import type { FilterSpecification, StyleSpecification } from 'maplibre-gl';
+
+/**
+ * Fills only accept polygons.
+ *
+ * The Protomaps water layer carries oceans and lakes as polygons and rivers as
+ * lines, in the same source-layer. A fill does not skip the lines: it treats each
+ * river course as a ring and triangulates it, which draws a spray of slivers
+ * across the land along every drainage basin. Asking for polygons is the whole
+ * of the fix; the same constraint is applied to every fill so a later layer
+ * cannot reintroduce the class of bug.
+ */
+const POLYGONS: FilterSpecification = ['==', '$type', 'Polygon'];
 
 /**
  * The palette.
@@ -61,6 +73,7 @@ export function basemapStyle(pmtilesUrl: string): StyleSpecification {
         type: 'fill',
         source: 'protomaps',
         'source-layer': 'earth',
+        filter: POLYGONS,
         paint: { 'fill-color': LAND },
       },
       {
@@ -68,6 +81,7 @@ export function basemapStyle(pmtilesUrl: string): StyleSpecification {
         type: 'fill',
         source: 'protomaps',
         'source-layer': 'water',
+        filter: POLYGONS,
         paint: { 'fill-color': WATER },
       },
       {
@@ -75,6 +89,10 @@ export function basemapStyle(pmtilesUrl: string): StyleSpecification {
         type: 'line',
         source: 'protomaps',
         'source-layer': 'boundaries',
+        // Provinces and up. Municipal boundaries are in here too, as one feature per tile
+        // carrying every line in it, and at these zooms they cover the country in a web dense
+        // enough to read as texture rather than as a border.
+        filter: ['in', 'kind', 'country', 'region'],
         paint: { 'line-color': BOUNDARY, 'line-width': 0.6 },
       },
       {
@@ -83,7 +101,10 @@ export function basemapStyle(pmtilesUrl: string): StyleSpecification {
         source: 'protomaps',
         'source-layer': 'roads',
         minzoom: 8,
-        filter: ['in', 'kind', 'highway', 'major_road'],
+        // The national network, not every sealed road. `major_road` reaches down to tertiary,
+        // which at these zooms fills the island with hairlines that carry no information about
+        // where freight goes.
+        filter: ['in', 'kind_detail', 'motorway', 'trunk', 'primary'],
         paint: { 'line-color': ROAD, 'line-width': 0.7 },
       },
     ],
