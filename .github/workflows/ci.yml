@@ -43,7 +43,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v10
+      # Exact tag: Astral publishes v10.x releases but has no floating `v10` ref, and
+      # Actions resolves `uses:` against that ref literally.
+      - uses: astral-sh/setup-uv@v10.1.0
         with:
           enable-cache: true
           cache-dependency-glob: pipeline/uv.lock
@@ -97,7 +99,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v10
+      # Exact tag: Astral publishes v10.x releases but has no floating `v10` ref, and
+      # Actions resolves `uses:` against that ref literally.
+      - uses: astral-sh/setup-uv@v10.1.0
         with:
           enable-cache: true
           cache-dependency-glob: pipeline/uv.lock
