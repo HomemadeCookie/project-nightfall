@@ -5,9 +5,12 @@ import {
   AIR_COLOUR,
   filterRange,
   pointColours,
+  pointFilters,
   pointModes,
   SEA_COLOUR,
+  timeFilterRange,
   vertexColours,
+  vertexFilters,
   vertexModes,
 } from './mobility';
 
@@ -89,5 +92,38 @@ describe('filterRange', () => {
     // An empty range would still cost a draw call per artifact; the caller turns null into an
     // invisible layer instead.
     expect(filterRange(false, false)).toBeNull();
+  });
+});
+
+describe('timeFilterRange', () => {
+  it('clips the selected span onto the mode range', () => {
+    expect(timeFilterRange([0, 1], 10, 40)).toEqual([
+      [0, 1],
+      [10, 40],
+    ]);
+  });
+
+  it('stays hidden when no mode is selected', () => {
+    expect(timeFilterRange(null, 0, 10)).toBeNull();
+  });
+});
+
+describe('vertexFilters', () => {
+  it('interleaves mode and timestamp so a range change is a uniform', () => {
+    const modes = vertexModes(TRACKS);
+    const filters = vertexFilters(modes, TRACKS.timestamps);
+    expect(Array.from(filters.slice(0, 4))).toEqual([MODE_AIR, 0, MODE_AIR, 30]);
+    expect(Array.from(filters.slice(6, 10))).toEqual([MODE_SEA, 10, MODE_SEA, 70]);
+  });
+});
+
+describe('pointFilters', () => {
+  it('pairs each isolated fix with its own time', () => {
+    expect(Array.from(pointFilters(pointModes(POINTS), POINTS.timestamps))).toEqual([
+      MODE_SEA,
+      5,
+      MODE_AIR,
+      45,
+    ]);
   });
 });

@@ -30,6 +30,23 @@ def main(argv: list[str]) -> int:
 
     manifest = json.loads(path.read_text())
     print(f"Generated `{manifest['generated_at']}` by run `{manifest['run_id']}`.\n")
+    print(f"Observation kind: `{manifest.get('observation_kind', 'live')}`.\n")
+    if manifest.get("available_from") and manifest.get("available_until"):
+        print(
+            f"Observed window (UTC): `{manifest['available_from']}` → "
+            f"`{manifest['available_until']}`.\n"
+        )
+    census = manifest.get("census")
+    if isinstance(census, dict):
+        print("| mode | unique | fixes | track segments | isolated points |")
+        print("| --- | --- | --- | --- | --- |")
+        for mode in ("air", "sea"):
+            row = census.get(mode, {})
+            print(
+                f"| {mode} | {row.get('unique_entities', 0)} | {row.get('position_fixes', 0)} "
+                f"| {row.get('track_segments', 0)} | {row.get('isolated_points', 0)} |"
+            )
+        print()
 
     print("| layer | zooms | features | vertices | points | bytes | freshness |")
     print("| --- | --- | --- | --- | --- | --- | --- |")

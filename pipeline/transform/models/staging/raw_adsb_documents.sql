@@ -19,8 +19,11 @@ select
 from read_json(
     {{ nightfall.sql_string_list(globs) }},
     columns = {'now': 'DOUBLE', 'ac': 'JSON[]'},
-    filename = true
+    filename = true,
+    ignore_errors = true
 )
+where now is not null
+    and ac is not null
 
 {% else %}
 

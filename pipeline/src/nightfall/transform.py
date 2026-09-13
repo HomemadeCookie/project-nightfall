@@ -99,14 +99,24 @@ def dbt_vars(
     *,
     lookback_hours: int = DEFAULT_LOOKBACK_HOURS,
     now: datetime | None = None,
+    since: datetime | None = None,
+    until: datetime | None = None,
 ) -> dict[str, object]:
     """The full variable set for a transform run.
 
     Every value that appears in both Python and SQL is defined once, here. The defaults in
     `dbt_project.yml` exist so the project is runnable by hand; this is what production uses.
+
+    `since` / `until` select landing-zone partitions. A historical day that is older than the
+    default lookback must be named, or the transform would rebuild an empty overlay and call
+    that a successful run.
     """
-    until = require_utc(now) if now is not None else utc_now()
-    since = until - timedelta(hours=lookback_hours)
+    until = (
+        require_utc(until)
+        if until is not None
+        else (require_utc(now) if now is not None else utc_now())
+    )
+    since = require_utc(since) if since is not None else until - timedelta(hours=lookback_hours)
     # Absolute: dbt resolves relative paths against its own working directory, which is not
     # necessarily the one the job was launched from.
     root = settings.raw_root.resolve()
@@ -172,9 +182,17 @@ def transform(
     project_dir: Path,
     lookback_hours: int = DEFAULT_LOOKBACK_HOURS,
     now: datetime | None = None,
+    since: datetime | None = None,
+    until: datetime | None = None,
 ) -> dict[str, object]:
     """Build the curated models, then test them. Returns the variables used, for the log."""
-    variables = dbt_vars(settings, lookback_hours=lookback_hours, now=now)
+    variables = dbt_vars(
+        settings,
+        lookback_hours=lookback_hours,
+        now=now,
+        since=since,
+        until=until,
+    )
     # An environment variable because that is the only channel `profiles.yml` has; `setdefault`
     # so an operator pointing dbt somewhere else still wins.
     settings.data_root.mkdir(parents=True, exist_ok=True)

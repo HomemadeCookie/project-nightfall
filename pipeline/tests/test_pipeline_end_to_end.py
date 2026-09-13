@@ -8,15 +8,17 @@ browser. Each of those has a unit test too, but only the whole run proves they c
 from __future__ import annotations
 
 import itertools
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pyarrow as pa
 import pytest
 
-from nightfall.bake import BudgetExceededError, bake
+from nightfall.bake import BudgetExceededError, EmptyObservationWindowError, bake
 from nightfall.bake.manifest import freshness
 from nightfall.config import Settings
+from nightfall.sources.adsb_history import seed_trace
+from nightfall.store import LocalRawStore
 from nightfall.transform import transform
 from tests.conftest import FIXTURE_AT, seed_ais_window, seed_window
 
@@ -40,6 +42,32 @@ def baked(settings: Settings, adsb_document: dict[str, object]) -> Settings:
 def _read(path: Path) -> pa.Table:
     with pa.memory_map(str(path)) as source:
         return pa.ipc.open_file(source).read_all()
+
+
+def test_a_globe_history_trace_becomes_tracks(settings: Settings) -> None:
+    """A recorded daily trace, not a live snapshot, still becomes a path overlay."""
+    payload = (Path(__file__).parent / "fixtures" / "adsb_lol_trace_manila.json").read_bytes()
+    seed_trace(LocalRawStore(settings.raw_root), payload)
+    seed_ais_window(settings)
+    day_start = datetime(2025, 9, 12, tzinfo=UTC)
+    transform(
+        settings,
+        project_dir=PROJECT_DIR,
+        since=day_start,
+        until=day_start + timedelta(days=1),
+        now=day_start + timedelta(days=1),
+    )
+    manifest = bake(
+        settings,
+        now=day_start + timedelta(days=1),
+        window_start=day_start,
+        window_end=day_start + timedelta(days=1),
+    )
+    assert manifest.census.air.unique_entities == 1
+    assert manifest.census.air.position_fixes >= 2
+    assert manifest.census.air.track_segments >= 1
+    tracks = next(layer for layer in manifest.layers if layer.kind == "tracks")
+    assert tracks.feature_count >= 1
 
 
 def test_a_sampling_window_becomes_tracks(baked: Settings) -> None:
@@ -150,12 +178,36 @@ def test_manifest_carries_provenance_and_attribution(baked: Settings) -> None:
     assert all(attribution.licence and attribution.url for attribution in manifest.attributions)
 
 
-def test_a_build_with_no_observations_credits_nobody(baked: Settings) -> None:
+def test_a_build_with_no_observations_credits_nobody(settings: Settings) -> None:
     """Credits follow the data served, not the registry, so an empty build credits no one."""
-    manifest = bake(baked, now=FIXTURE_AT + timedelta(days=2))
+    transform(settings, project_dir=PROJECT_DIR, now=FIXTURE_AT)
+    manifest = bake(settings, now=FIXTURE_AT)
     assert manifest.attributions == []
-    # The sources themselves are still listed, because their state is what explains the gap.
     assert {source.source for source in manifest.sources} == {"adsb_lol", "aisstream"}
+    assert manifest.census.air.unique_entities == 0
+    assert manifest.census.sea.unique_entities == 0
+
+
+def test_an_explicit_empty_range_fails_the_bake(baked: Settings) -> None:
+    """A range we did not observe is a failed bake, not an empty map that looks quiet."""
+    with pytest.raises(EmptyObservationWindowError, match="no curated positions"):
+        bake(
+            baked,
+            window_start=FIXTURE_AT + timedelta(days=2),
+            window_end=FIXTURE_AT + timedelta(days=3),
+        )
+
+
+def test_the_slider_domain_equals_the_baked_minmax(baked: Settings) -> None:
+    manifest = bake(baked, now=FIXTURE_AT + timedelta(minutes=10))
+    assert manifest.available_from is not None
+    assert manifest.available_until is not None
+    assert manifest.available_from == manifest.layers[0].observed_from
+    assert manifest.available_until == manifest.layers[0].observed_at
+    assert manifest.census.air.unique_entities > 0
+    assert manifest.census.sea.unique_entities > 0
+    assert manifest.census.air.position_fixes >= manifest.census.air.unique_entities
+    assert manifest.census.sea.track_segments >= 1
 
 
 def test_an_unconfigured_source_is_reported_not_hidden(baked: Settings) -> None:
@@ -165,8 +217,10 @@ def test_an_unconfigured_source_is_reported_not_hidden(baked: Settings) -> None:
 
 
 def test_stale_data_is_labelled_rather_than_served_as_current(baked: Settings) -> None:
+    """A live kind whose newest fix is two days old is stale, not current and not archive."""
     manifest = bake(baked, now=FIXTURE_AT + timedelta(days=2))
-    assert {layer.freshness for layer in manifest.layers} == {"absent"}
+    assert manifest.observation_kind == "live"
+    assert {layer.freshness for layer in manifest.layers} == {"stale"}
 
 
 def test_freshness_states() -> None:

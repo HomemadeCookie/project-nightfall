@@ -27,6 +27,9 @@ interface AppState {
   zoom: number;
   showAir: boolean;
   showSea: boolean;
+  /** Playable span in artifact seconds, copied from the baked min/max. */
+  availableStart: number;
+  availableEnd: number;
   hover: HoverTarget | null;
   /**
    * Everything the app has had to tell the user, in the order it arose. A silent failure is
@@ -40,6 +43,7 @@ interface AppState {
   setCapability: (capability: Capability) => void;
   setPlaying: (playing: boolean) => void;
   setZoom: (zoom: number) => void;
+  setAvailableSpan: (start: number, end: number) => void;
   toggleAir: () => void;
   toggleSea: () => void;
   setHover: (hover: HoverTarget | null) => void;
@@ -57,6 +61,8 @@ export const useAppStore = create<AppState>()((set) => ({
   zoom: 0,
   showAir: true,
   showSea: true,
+  availableStart: 0,
+  availableEnd: 0,
   hover: null,
   notices: [],
 
@@ -71,6 +77,7 @@ export const useAppStore = create<AppState>()((set) => ({
     }),
   setPlaying: (playing) => set({ playing }),
   setZoom: (zoom) => set({ zoom }),
+  setAvailableSpan: (availableStart, availableEnd) => set({ availableStart, availableEnd }),
   toggleAir: () => set((state) => ({ showAir: !state.showAir })),
   toggleSea: () => set((state) => ({ showSea: !state.showSea })),
   setHover: (hover) => set({ hover }),

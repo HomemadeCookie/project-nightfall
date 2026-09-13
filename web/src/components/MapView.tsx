@@ -30,14 +30,23 @@ import { useEffect, useRef } from 'react';
 
 import { basemapAvailable, basemapStyle, blankStyle } from '../basemap';
 import { AnimationClock } from '../clock';
-import { BASEMAP_URL, MIN_TRACK_ZOOM, PLAYBACK_RATE, servingUrl } from '../config';
+import {
+  BASEMAP_URL,
+  MIN_TRACK_ZOOM,
+  PLAYBACK_RATE,
+  playbackRateForSpan,
+  servingUrl,
+} from '../config';
 import {
   filterRange,
   pointColours,
+  pointFilters,
   pointLayer,
   pointModes,
+  timeFilterRange,
   trackLayer,
   vertexColours,
+  vertexFilters,
   vertexModes,
 } from '../layers/mobility';
 import { layersForZoom, type Manifest } from '../manifest';
@@ -54,8 +63,8 @@ export const animationClock = new AnimationClock(PLAYBACK_RATE);
 
 /** Decoded artifacts plus the GPU attributes derived from them, built once per load. */
 interface Loaded {
-  tracks: Map<string, { bundle: TracksBundle; colours: Uint8Array; modes: Float32Array }>;
-  points: { bundle: PointsBundle; colours: Uint8Array; modes: Float32Array } | null;
+  tracks: Map<string, { bundle: TracksBundle; colours: Uint8Array; filters: Float32Array }>;
+  points: { bundle: PointsBundle; colours: Uint8Array; filters: Float32Array } | null;
 }
 
 export function MapView({ manifest }: { manifest: Manifest }): React.JSX.Element {
@@ -69,6 +78,7 @@ export function MapView({ manifest }: { manifest: Manifest }): React.JSX.Element
   const setHover = useAppStore((state) => state.setHover);
   const notify = useAppStore((state) => state.notify);
   const disableAnimation = useAppStore((state) => state.disableAnimation);
+  const setAvailableSpan = useAppStore((state) => state.setAvailableSpan);
 
   // One effect owns the map's whole lifetime. Splitting it across effects is how a map ends
   // up initialised twice under StrictMode.
@@ -176,6 +186,8 @@ export function MapView({ manifest }: { manifest: Manifest }): React.JSX.Element
       }
 
       const [start, end] = spanOf(loaded.current);
+      setAvailableSpan(start, end);
+      animationClock.setRate(playbackRateForSpan(end - start));
       animationClock.setRange(start, end);
       // A clock that is not about to run is parked at the end of the window rather than at
       // its first instant, so the opening view is everything that was observed instead of a
@@ -197,7 +209,7 @@ export function MapView({ manifest }: { manifest: Manifest }): React.JSX.Element
       overlayRef.current = null;
       mapRef.current = null;
     };
-  }, [manifest, setZoom, notify, setHover, disableAnimation]);
+  }, [manifest, setZoom, notify, setHover, disableAnimation, setAvailableSpan]);
 
   // Layer visibility is React state, so it rebuilds through the same path as a zoom change.
   const showAir = useAppStore((state) => state.showAir);
@@ -241,14 +253,20 @@ async function loadArtifacts(manifest: Manifest, into: Loaded): Promise<string[]
     manifest.layers.map(async (layer) => {
       if (layer.kind === 'tracks') {
         const bundle = await loadTracks(servingUrl(layer.url));
+        const modes = vertexModes(bundle);
         into.tracks.set(layer.id, {
           bundle,
           colours: vertexColours(bundle),
-          modes: vertexModes(bundle),
+          filters: vertexFilters(modes, bundle.timestamps),
         });
       } else {
         const bundle = await loadPoints(servingUrl(layer.url));
-        into.points = { bundle, colours: pointColours(bundle), modes: pointModes(bundle) };
+        const modes = pointModes(bundle);
+        into.points = {
+          bundle,
+          colours: pointColours(bundle),
+          filters: pointFilters(modes, bundle.timestamps),
+        };
       }
     }),
   );
@@ -288,7 +306,8 @@ function buildLayers(loaded: Loaded, zoom: number, inputs: RenderInputs): DeckLa
   const { manifest, showAir, showSea, playing } = inputs;
   const layers: DeckLayer[] = [];
   const currentTime = animationClock.currentPosition;
-  const range = filterRange(showAir, showSea);
+  const [spanStart] = animationClock.range;
+  const range = timeFilterRange(filterRange(showAir, showSea), spanStart, currentTime);
 
   // Zoom-gated level of detail: individual tracks only from zoom 9 (`.cursorrules` § 6).
   if (zoom >= MIN_TRACK_ZOOM) {
@@ -300,7 +319,7 @@ function buildLayers(loaded: Loaded, zoom: number, inputs: RenderInputs): DeckLa
           id: descriptor.id,
           bundle: entry.bundle,
           colours: entry.colours,
-          modes: entry.modes,
+          filters: entry.filters,
           range,
           currentTime,
           playing,
@@ -315,7 +334,7 @@ function buildLayers(loaded: Loaded, zoom: number, inputs: RenderInputs): DeckLa
         id: 'mobility-points',
         bundle: loaded.points.bundle,
         colours: loaded.points.colours,
-        modes: loaded.points.modes,
+        filters: loaded.points.filters,
         range,
       }),
     );

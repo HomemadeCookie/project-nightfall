@@ -12,6 +12,7 @@ import { probeCapability } from './capability';
 import { AttributionBar } from './components/AttributionBar';
 import { FreshnessPanel } from './components/FreshnessPanel';
 import { MapView } from './components/MapView';
+import { RangeControl } from './components/RangeControl';
 import { TimeScrubber } from './components/TimeScrubber';
 import { MANIFEST_URL, MIN_TRACK_ZOOM } from './config';
 import { type Manifest, ManifestVersionError, parseManifest } from './manifest';
@@ -83,6 +84,7 @@ export function App(): React.JSX.Element {
       <aside className="sidebar">
         <FreshnessPanel manifest={manifest} />
         <LayerToggles />
+        <RangeControl epoch={epoch} />
         <TimeScrubber epoch={epoch} />
       </aside>
 

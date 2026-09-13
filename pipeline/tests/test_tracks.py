@@ -16,6 +16,7 @@ from nightfall.bake.tracks import (
     douglas_peucker,
     segment,
     simplify,
+    thin_fixes,
     tolerance_degrees,
 )
 
@@ -25,6 +26,14 @@ def _fixes(*offsets: float) -> list[Fix]:
         Fix(lon=121.0 + index * 0.01, lat=14.5, epoch_s=offset)
         for index, offset in enumerate(offsets)
     ]
+
+
+def test_thinning_keeps_endpoints_and_does_not_invent_fixes() -> None:
+    fixes = _fixes(0.0, 20.0, 40.0, 60.0, 80.0)
+    thinned = thin_fixes(fixes, 60.0)
+    assert [fix.epoch_s for fix in thinned] == [0.0, 60.0, 80.0]
+    original = {(fix.lon, fix.lat, fix.epoch_s) for fix in fixes}
+    assert all((fix.lon, fix.lat, fix.epoch_s) in original for fix in thinned)
 
 
 def test_a_gap_ends_the_segment() -> None:

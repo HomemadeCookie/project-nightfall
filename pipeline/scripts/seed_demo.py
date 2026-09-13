@@ -32,6 +32,7 @@ from tests.conftest import seed_ais_window, seed_window
 from nightfall.bake import bake
 from nightfall.clock import utc_now
 from nightfall.config import Settings
+from nightfall.health import HealthReport
 from nightfall.transform import transform
 
 log = logging.getLogger("nightfall.demo")
@@ -51,7 +52,9 @@ SWEEP_INTERVAL_S = 20.0
 #: vessel layer was broken.
 AIS_WINDOW_S = 180.0
 AIS_ORIGIN = (120.62, 14.40)
-AIS_SPACING = (0.1, 0.08)
+AIS_SPACING = (0.08, 0.06)
+AIS_VESSELS = 24
+AIS_REPORTS = 12
 
 
 def main() -> int:
@@ -79,7 +82,10 @@ def main() -> int:
         start=now - timedelta(seconds=AIS_WINDOW_S),
         origin=AIS_ORIGIN,
         spacing=AIS_SPACING,
+        vessels=AIS_VESSELS,
+        reports=AIS_REPORTS,
     )
+    _write_fixture_health(settings, adsb_objects=len(list((settings.raw_root).rglob("*.json.gz"))))
     transform(settings, project_dir=PIPELINE_ROOT / "transform", now=now)
     manifest = bake(settings, now=now)
 
@@ -95,7 +101,41 @@ def main() -> int:
             layer.budget.bytes,
             layer.freshness,
         )
+    log.info(
+        "census air unique=%d fixes=%d segments=%d isolated=%d | "
+        "sea unique=%d fixes=%d segments=%d isolated=%d | kind=%s window=%s..%s",
+        manifest.census.air.unique_entities,
+        manifest.census.air.position_fixes,
+        manifest.census.air.track_segments,
+        manifest.census.air.isolated_points,
+        manifest.census.sea.unique_entities,
+        manifest.census.sea.position_fixes,
+        manifest.census.sea.track_segments,
+        manifest.census.sea.isolated_points,
+        manifest.observation_kind,
+        manifest.available_from,
+        manifest.available_until,
+    )
     return 0
+
+
+def _write_fixture_health(settings: Settings, *, adsb_objects: int) -> None:
+    air = HealthReport(run_id=settings.run_id)
+    air.record(
+        source="adsb_lol",
+        state="fixture",
+        objects_written=adsb_objects,
+        detail="Recorded Manila snapshot flown forward; not a live collection",
+    )
+    air.write(settings.health_path.with_name("health_adsb_lol.json"))
+    sea = HealthReport(run_id=settings.run_id)
+    sea.record(
+        source="aisstream",
+        state="fixture",
+        objects_written=1,
+        detail="Schema-built fixture vessels; AISStream is live-only and no key is configured",
+    )
+    sea.write(settings.health_path.with_name("health_aisstream.json"))
 
 
 if __name__ == "__main__":

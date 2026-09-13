@@ -23,8 +23,8 @@ import { ScatterplotLayer } from '@deck.gl/layers';
 import { TRAIL_LENGTH_S } from '../config';
 import { MODE_AIR, MODE_SEA, type PointsBundle, type TracksBundle } from '../workers/bundles';
 
-/** One instance, shared by every layer: an extension holds no per-layer state. */
-const MODE_FILTER = new DataFilterExtension({ filterSize: 1 });
+/** One instance, shared by every layer: mode + time, so a range change is a uniform. */
+const MODE_TIME_FILTER = new DataFilterExtension({ filterSize: 2 });
 
 /** Aircraft and vessels are told apart by colour, not by being in different layers. */
 export const AIR_COLOUR: [number, number, number] = [255, 176, 59];
@@ -87,6 +87,34 @@ export function filterRange(showAir: boolean, showSea: boolean): [number, number
   return null;
 }
 
+/**
+ * Interleave per-vertex mode and timestamp for a two-channel GPU filter.
+ *
+ * Channel 0 hides a mode; channel 1 clips the selected range so a playhead parked at 18:00
+ * inside a 08:00–18:00 selection does not keep drawing the 03:00 tracks.
+ */
+export function vertexFilters(modes: Float32Array, timestamps: Float32Array): Float32Array {
+  const filters = new Float32Array(modes.length * 2);
+  for (let index = 0; index < modes.length; index += 1) {
+    filters[index * 2] = modes[index] ?? MODE_AIR;
+    filters[index * 2 + 1] = timestamps[index] ?? 0;
+  }
+  return filters;
+}
+
+export function pointFilters(modes: Float32Array, timestamps: Float32Array): Float32Array {
+  return vertexFilters(modes, timestamps);
+}
+
+export function timeFilterRange(
+  modeRange: [number, number] | null,
+  start: number,
+  end: number,
+): [[number, number], [number, number]] | null {
+  if (modeRange === null) return null;
+  return [modeRange, [start, end]];
+}
+
 export function pointColours(bundle: PointsBundle): Uint8Array {
   const colours = new Uint8Array(bundle.length * 3);
   for (let index = 0; index < bundle.length; index += 1) {
@@ -102,8 +130,8 @@ export interface TrackLayerOptions {
   id: string;
   bundle: TracksBundle;
   colours: Uint8Array;
-  modes: Float32Array;
-  range: [number, number] | null;
+  filters: Float32Array;
+  range: [[number, number], [number, number]] | null;
   currentTime: number;
   /** Whether the clock is running, which is what the trail is for. */
   playing: boolean;
@@ -121,11 +149,14 @@ export function trackLayer(options: TrackLayerOptions): DeckLayer {
         getPath: { value: bundle.positions, size: 2 },
         getTimestamps: { value: bundle.timestamps, size: 1 },
         getColor: { value: colours, size: 3 },
-        getFilterValue: { value: options.modes, size: 1 },
+        getFilterValue: { value: options.filters, size: 2 },
       },
     },
-    extensions: [MODE_FILTER],
-    filterRange: range ?? [MODE_AIR, MODE_SEA],
+    extensions: [MODE_TIME_FILTER],
+    filterRange: range ?? [
+      [MODE_AIR, MODE_SEA],
+      [Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY],
+    ],
     // Required by deck.gl's binary path form: the accessors are never called, but their
     // presence tells the layer the attributes are supplied rather than derived.
     _pathType: 'open',
@@ -152,8 +183,8 @@ export interface PointLayerOptions {
   id: string;
   bundle: PointsBundle;
   colours: Uint8Array;
-  modes: Float32Array;
-  range: [number, number] | null;
+  filters: Float32Array;
+  range: [[number, number], [number, number]] | null;
 }
 
 export function pointLayer(options: PointLayerOptions): DeckLayer {
@@ -166,11 +197,14 @@ export function pointLayer(options: PointLayerOptions): DeckLayer {
       attributes: {
         getPosition: { value: bundle.positions, size: 2 },
         getFillColor: { value: colours, size: 3 },
-        getFilterValue: { value: options.modes, size: 1 },
+        getFilterValue: { value: options.filters, size: 2 },
       },
     },
-    extensions: [MODE_FILTER],
-    filterRange: range ?? [MODE_AIR, MODE_SEA],
+    extensions: [MODE_TIME_FILTER],
+    filterRange: range ?? [
+      [MODE_AIR, MODE_SEA],
+      [Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY],
+    ],
     radiusUnits: 'pixels',
     getRadius: 3,
     radiusMinPixels: 2,

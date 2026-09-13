@@ -8,7 +8,8 @@
  */
 import { z } from 'zod';
 
-export const FRESHNESS = ['fresh', 'late', 'stale', 'absent'] as const;
+export const FRESHNESS = ['fresh', 'late', 'stale', 'absent', 'archive', 'fixture'] as const;
+export const OBSERVATION_KINDS = ['live', 'archive', 'fixture', 'mixed'] as const;
 
 const budgetSchema = z.object({
   path_vertices: z.number().int().nonnegative(),
@@ -16,6 +17,13 @@ const budgetSchema = z.object({
   points: z.number().int().nonnegative(),
   point_limit: z.number().int().positive(),
   bytes: z.number().int().nonnegative(),
+});
+
+const modeCensusSchema = z.object({
+  unique_entities: z.number().int().nonnegative(),
+  position_fixes: z.number().int().nonnegative(),
+  track_segments: z.number().int().nonnegative(),
+  isolated_points: z.number().int().nonnegative(),
 });
 
 const layerSchema = z.object({
@@ -62,6 +70,13 @@ export const manifestSchema = z.object({
   attributions: z.array(attributionSchema),
   sources: z.array(sourceHealthSchema),
   sampling_notice: z.string(),
+  observation_kind: z.enum(OBSERVATION_KINDS),
+  available_from: z.string().nullable(),
+  available_until: z.string().nullable(),
+  census: z.object({
+    air: modeCensusSchema,
+    sea: modeCensusSchema,
+  }),
 });
 
 export type Manifest = z.infer<typeof manifestSchema>;
@@ -69,6 +84,8 @@ export type Layer = z.infer<typeof layerSchema>;
 export type Attribution = z.infer<typeof attributionSchema>;
 export type SourceHealth = z.infer<typeof sourceHealthSchema>;
 export type Freshness = (typeof FRESHNESS)[number];
+export type ObservationKind = (typeof OBSERVATION_KINDS)[number];
+export type ModeCensus = z.infer<typeof modeCensusSchema>;
 
 /**
  * The schema version this build knows how to read.
@@ -101,6 +118,16 @@ export function layersForZoom(manifest: Manifest, zoom: number, kind: Layer['kin
   return manifest.layers.filter(
     (layer) => layer.kind === kind && zoom >= layer.min_zoom && zoom <= layer.max_zoom,
   );
+}
+
+/** Artifact-second domain of the baked window. The slider may not leave this span. */
+export function artifactSpan(manifest: Manifest): readonly [number, number] {
+  const epoch = new Date(manifest.layers[0]?.epoch ?? manifest.generated_at).getTime();
+  const from =
+    manifest.available_from === null ? epoch : new Date(manifest.available_from).getTime();
+  const until =
+    manifest.available_until === null ? epoch : new Date(manifest.available_until).getTime();
+  return [(from - epoch) / 1000, (until - epoch) / 1000];
 }
 
 /** The worst freshness across the layers, which is what the badge must report. */

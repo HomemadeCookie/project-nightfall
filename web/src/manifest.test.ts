@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  artifactSpan,
   layersForZoom,
   ManifestVersionError,
   overallFreshness,
@@ -46,6 +47,13 @@ function manifest(overrides: Record<string, unknown> = {}): Record<string, unkno
     ],
     sources: [{ source: 'adsb.lol', state: 'ok', observed_at: null, detail: null }],
     sampling_notice: 'Positions are sampled in short scheduled windows.',
+    observation_kind: 'live',
+    available_from: '2026-09-11T00:00:00Z',
+    available_until: '2026-09-11T06:00:00Z',
+    census: {
+      air: { unique_entities: 2, position_fixes: 10, track_segments: 2, isolated_points: 0 },
+      sea: { unique_entities: 0, position_fixes: 0, track_segments: 0, isolated_points: 0 },
+    },
     ...overrides,
   };
 }
@@ -112,6 +120,12 @@ describe('layersForZoom', () => {
   it('does not mix kinds', () => {
     expect(layersForZoom(parsed, 6, 'tracks')).toHaveLength(0);
     expect(layersForZoom(parsed, 6, 'points')).toHaveLength(1);
+  });
+});
+
+describe('artifactSpan', () => {
+  it('is the baked min/max in artifact seconds, which is the slider domain', () => {
+    expect(artifactSpan(parseManifest(manifest()))).toEqual([0, 6 * 3600]);
   });
 });
 

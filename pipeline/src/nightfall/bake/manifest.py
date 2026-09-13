@@ -32,7 +32,8 @@ FRESH_AFTER = timedelta(hours=1)
 #: rather than continue presenting the artifact as a picture of now.
 STALE_AFTER = timedelta(hours=6)
 
-FreshnessState = Literal["fresh", "late", "stale", "absent"]
+FreshnessState = Literal["fresh", "late", "stale", "absent", "archive", "fixture"]
+ObservationKind = Literal["live", "archive", "fixture", "mixed"]
 
 
 def freshness(observed_at: datetime | None, *, now: datetime | None = None) -> FreshnessState:
@@ -44,6 +45,24 @@ def freshness(observed_at: datetime | None, *, now: datetime | None = None) -> F
     if age <= STALE_AFTER:
         return "late"
     return "stale"
+
+
+class ModeCensus(BaseModel):
+    """How many entities and fixes of one mode reached this bake.
+
+    Counts of curated observations, not an insight. Recomputable from the same Parquet plus
+    the same segmentation rules (invariant 7).
+    """
+
+    unique_entities: int
+    position_fixes: int
+    track_segments: int
+    isolated_points: int
+
+
+class MobilityCensus(BaseModel):
+    air: ModeCensus
+    sea: ModeCensus
 
 
 class Attribution(BaseModel):
@@ -109,3 +128,20 @@ class Manifest(BaseModel):
     #: Rendered verbatim in the UI. Sampled collection is a real limitation of a zero-cost
     #: design and the interface must not imply otherwise (README § Hard Constraint: Zero Cost).
     sampling_notice: str
+    #: What this build actually is. Fixture and archive must not read as a live feed, and a
+    #: live three-minute sample must not read as a multi-year history.
+    observation_kind: ObservationKind = "live"
+    #: Actual first and last observation in the baked window (UTC). The range control may
+    #: not be dragged outside this span.
+    available_from: str | None = None
+    available_until: str | None = None
+    census: MobilityCensus = Field(
+        default_factory=lambda: MobilityCensus(
+            air=ModeCensus(
+                unique_entities=0, position_fixes=0, track_segments=0, isolated_points=0
+            ),
+            sea=ModeCensus(
+                unique_entities=0, position_fixes=0, track_segments=0, isolated_points=0
+            ),
+        )
+    )
