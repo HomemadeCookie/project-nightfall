@@ -1,0 +1,56 @@
+name: nightfall
+version: "0.1.0"
+config-version: 2
+profile: nightfall
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+require-dbt-version: [">=1.12.0", "<1.13.0"]
+
+# Telemetry is an outbound network call from every pipeline run and buys the project nothing.
+flags:
+  send_anonymous_usage_stats: false
+
+# Defaults only. Every value here is overridden by the CLI (`nightfall transform`), which is
+# the single source of truth for AOI bounds, resolutions, and horizons — they are defined in
+# `nightfall.geo` and `nightfall.transform` and passed in as vars so they cannot drift.
+vars:
+  raw_root: "build"
+  curated_root: "build/curated"
+  schema_version: 1
+  run_id: "local"
+
+  # Landing-zone globs for this run, one per existing `dt=` partition in the lookback window.
+  # An empty list is a valid cold start and must yield an empty model, not an error.
+  adsb_globs: []
+  ais_globs: []
+
+  aoi_west: 116.0
+  aoi_south: 4.0
+  aoi_east: 127.0
+  aoi_north: 21.5
+
+  coverage_h3_resolution: 6
+  partition_h3_resolution: 3
+  time_bucket: "1 hour"
+
+  # How long one stored object represents the source as being under observation. For AIS this
+  # is the declared sampling window; for ADS-B it is measured per response and this is only a
+  # sanity ceiling. See `nightfall.transform` for the provenance of each number.
+  adsb_snapshot_horizon_max_s: 60.0
+  ais_window_s: 180.0
+
+  # adsb.lol reports the response instant in milliseconds; aircraft ages are in seconds.
+  adsb_now_units_per_second: 1000.0
+
+models:
+  nightfall:
+    staging:
+      +materialized: view
+    curated:
+      +materialized: external
+      +format: parquet

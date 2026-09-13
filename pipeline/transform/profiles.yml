@@ -1,0 +1,18 @@
+# DuckDB is the whole engine; there is no database server to point at (README § Database &
+# Storage). `path` is a scratch catalogue for the run's views, not a store: everything that
+# outlives the job is a Parquet file under `curated_root`.
+nightfall:
+  target: local
+  outputs:
+    local:
+      type: duckdb
+      path: "{{ env_var('NIGHTFALL_DUCKDB_PATH', 'build/nightfall.duckdb') }}"
+      threads: 4
+      extensions:
+        - spatial
+        - name: h3
+          repo: community
+      settings:
+        # Invariant 6: UTC in storage. `time_bucket` aligns TIMESTAMPTZ buckets against the
+        # session zone, so leaving this unset would silently bucket by the runner's locale.
+        TimeZone: "UTC"

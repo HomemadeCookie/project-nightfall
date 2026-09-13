@@ -1,0 +1,169 @@
+name: pipeline
+
+# Collect, transform, bake, publish. One run does all four, deliberately.
+#
+# Splitting collection from publication would mean the raw objects had to survive between
+# workflow runs, and the only free place to put them is the archive — so a publication would
+# then depend on reaching a third party, which invariant 3 forbids of the read path. Keeping
+# the stages in one run means a publication depends on nothing but this runner: the archive
+# upload and restore are enrichments that may fail without taking the site down with them.
+#
+# The schedule is deliberately irregular. Vessel and aircraft traffic both follow the clock, so
+# sampling at the same times every day would produce a picture of four moments rather than of
+# Philippine movement, and every aggregate built on it would inherit that bias.
+
+on:
+  schedule:
+    - cron: '17 2 * * *'   # 10:17 Manila
+    - cron: '43 7 * * *'   # 15:43 Manila
+    - cron: '11 13 * * *'  # 21:11 Manila
+    - cron: '29 18 * * *'  # 02:29 Manila
+  workflow_dispatch:
+    inputs:
+      collect:
+        description: Run the collectors, or publish from the archive alone
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# Never two publications at once, and never cancel one in flight: a cancelled run leaves the
+# collected window unarchived, which is a permanent hole in the history.
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # Two bounded collection windows plus the build. Generous enough to absorb a slow upstream,
+    # bounded so a hung job cannot run for six hours.
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    env:
+      NIGHTFALL_ARCHIVE_REPO: ${{ vars.NIGHTFALL_ARCHIVE_REPO }}
+      NIGHTFALL_HF_TOKEN: ${{ secrets.NIGHTFALL_HF_TOKEN }}
+      NIGHTFALL_AISSTREAM_API_KEY: ${{ secrets.NIGHTFALL_AISSTREAM_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Exact tag: Astral publishes v10.x releases but has no floating `v10` ref, and
+      # Actions resolves `uses:` against that ref literally.
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: pipeline/uv.lock
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: uv sync --locked
+        working-directory: pipeline
+
+      # Both collectors run concurrently because each is a bounded window of wall-clock time,
+      # not work: running them in sequence would double the window for no extra data. Neither
+      # can fail the job — a source outage degrades freshness, and the UI says so.
+      - name: Collect
+        if: github.event_name == 'schedule' || inputs.collect
+        run: |
+          uv run --project pipeline nightfall collect adsb_lol &
+          adsb=$!
+          uv run --project pipeline nightfall collect aisstream &
+          ais=$!
+          wait $adsb
+          wait $ais
+
+      # Archive before transform: the raw objects are the archive's reason to exist, and a
+      # failure in a later stage must not cost us the observations.
+      - name: Archive raw objects
+        if: github.event_name == 'schedule' || inputs.collect
+        run: uv run --project pipeline nightfall archive
+
+      - name: Restore the recent window from the archive
+        run: uv run --project pipeline nightfall restore
+
+      - name: Transform
+        run: uv run --project pipeline nightfall transform
+
+      - name: Bake
+        run: uv run --project pipeline nightfall bake
+
+      # The basemap is cut from a Protomaps planet build over HTTP range requests — about 20 MB
+      # and a few seconds — and cached by month, so that happens once a month rather than on
+      # every run. Keyed by the month rather than restored by prefix on purpose: a prefix match
+      # would keep serving last year's coastlines forever, because a cache hit means no rebuild.
+      - name: Resolve the basemap's cache month
+        id: month
+        run: echo "value=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the cached basemap
+        uses: actions/cache@v6
+        with:
+          path: build/basemap
+          key: basemap-v1-${{ hashFiles('pipeline/src/nightfall/geo.py') }}-${{ steps.month.outputs.value }}
+
+      - name: Install pmtiles
+        run: |
+          version=1.31.2
+          curl -fsSL -o pmtiles.tar.gz \
+            "https://github.com/protomaps/go-pmtiles/releases/download/v${version}/go-pmtiles_${version}_Linux_x86_64.tar.gz"
+          tar -xzf pmtiles.tar.gz pmtiles
+          sudo install -m 0755 pmtiles /usr/local/bin/pmtiles
+          pmtiles version
+
+      - name: Build the basemap
+        # Absence is handled: the app draws positions without geographic context and says why,
+        # so a Protomaps outage costs the map its coastlines and not its observations.
+        continue-on-error: true
+        run: uv run --project pipeline python pipeline/scripts/build_basemap.py
+
+      - run: npm ci
+        working-directory: web
+
+      - run: npm run build
+        working-directory: web
+
+      # The serving set travels inside the site, at the relative path the manifest assumes.
+      - name: Assemble the site
+        run: cp -r build/serving web/dist/serving
+
+      - name: Check the Pages ceiling
+        # Pages refuses a site over 1 GB. The bake stage already asserts this for the serving
+        # set; this covers the assembled site, which is what actually gets deployed.
+        run: |
+          bytes=$(du -sb web/dist | cut -f1)
+          echo "site is $bytes bytes"
+          if [ "$bytes" -gt 943718400 ]; then
+            echo "::error::the assembled site exceeds 900 MB, approaching the 1 GB Pages ceiling"
+            exit 1
+          fi
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: web/dist
+
+      - id: deploy
+        uses: actions/deploy-pages@v5
+
+      - name: Summarise the run
+        # Always, including after a failure: what was collected and what was missed is the
+        # information a reader needs, and it is most needed when something went wrong.
+        if: always()
+        run: python3 pipeline/scripts/summarise.py build/serving/manifest.json
+          >> "$GITHUB_STEP_SUMMARY"

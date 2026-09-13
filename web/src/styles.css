@@ -1,0 +1,374 @@
+/*
+ * Styles.
+ *
+ * Self-contained on purpose: no webfont, no CSS framework, no icon set. Every one of those is
+ * a request to a third-party origin, which invariant 1 forbids, and a dependency whose free
+ * tier is someone else's to withdraw.
+ *
+ * Dark by default because the map is dark, and a light chrome around a dark map reads as an
+ * error in the map rather than a choice in the chrome.
+ */
+
+:root {
+  --bg: #0b0f14;
+  --panel: rgb(18 24 32 / 88%);
+  --edge: rgb(255 255 255 / 12%);
+  --text: #e8edf3;
+  --muted: #93a1b1;
+  --air: #ffb03b;
+  --sea: #56ccf2;
+  --warn: #f2994a;
+  --error: #eb5757;
+  --ok: #6fcf97;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font:
+    14px / 1.45 system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+}
+
+h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+p {
+  margin: 4px 0;
+}
+
+a {
+  color: var(--sea);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 12px;
+}
+
+.warn {
+  color: var(--warn);
+}
+
+/* Layout: the map fills the viewport and the chrome floats over it. */
+
+.app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.map {
+  position: absolute;
+  inset: 0;
+}
+
+.header,
+.sidebar,
+.attribution,
+.banners {
+  position: absolute;
+  z-index: 1;
+}
+
+.header {
+  top: 12px;
+  left: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background: var(--panel);
+  backdrop-filter: blur(8px);
+}
+
+.sidebar {
+  top: 12px;
+  right: 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 288px;
+  max-height: calc(100% - 96px);
+  overflow-y: auto;
+}
+
+.panel {
+  padding: 12px 14px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background: var(--panel);
+  backdrop-filter: blur(8px);
+}
+
+.panel label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  cursor: pointer;
+}
+
+.panel dl {
+  margin: 8px 0 0;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.row dt {
+  color: var(--muted);
+}
+
+.row dd {
+  margin: 0;
+  text-align: right;
+}
+
+/* Freshness is the one signal that must be legible at a glance (README § Risks). */
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.dot-fresh {
+  background: var(--ok);
+  box-shadow: 0 0 8px rgb(111 207 151 / 60%);
+}
+
+.dot-late {
+  background: var(--warn);
+}
+
+.dot-stale,
+.dot-absent {
+  background: var(--error);
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.swatch-air {
+  background: var(--air);
+}
+
+.swatch-sea {
+  background: var(--sea);
+}
+
+/* Playback */
+
+.scrubber-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.readout {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  font-size: 13px;
+}
+
+.scrubber input[type="range"] {
+  width: 100%;
+  margin: 10px 0 2px;
+  accent-color: var(--sea);
+}
+
+button {
+  padding: 5px 12px;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: rgb(255 255 255 / 6%);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: rgb(255 255 255 / 12%);
+}
+
+button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sea);
+  text-decoration: underline;
+}
+
+/* Attribution is a licence obligation, so it is always present, never behind a hover. */
+
+.attribution {
+  bottom: 10px;
+  left: 12px;
+  max-width: min(560px, calc(100% - 24px));
+  padding: 7px 11px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background: var(--panel);
+  font-size: 12px;
+  backdrop-filter: blur(8px);
+}
+
+.attribution-sources {
+  margin-left: 7px;
+}
+
+.attribution-detail ul {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+
+.notice {
+  margin: 6px 0;
+  padding: 8px 10px;
+  border-left: 2px solid var(--warn);
+  background: rgb(242 153 74 / 10%);
+}
+
+/* Notices stack upward from the attribution bar: each is a separate fact, and collapsing them
+   into one line would run them together into a sentence nobody wrote. */
+.banners {
+  /* Clear of the attribution bar, which shares the bottom edge. */
+  bottom: 52px;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  max-width: min(640px, calc(100% - 24px));
+  transform: translateX(-50%);
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 13px;
+  border: 1px solid var(--warn);
+  border-radius: 8px;
+  background: rgb(30 22 12 / 94%);
+}
+
+.hovercard {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 9px;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: rgb(10 14 19 / 95%);
+  pointer-events: none;
+  transform: translate(12px, 12px);
+}
+
+.splash {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 24px;
+  text-align: center;
+}
+
+.splash-error p {
+  max-width: 46ch;
+  color: var(--warn);
+}
+
+/* MapLibre's own controls, matched to the panels rather than left as default blue-on-white. */
+
+.maplibregl-ctrl-group {
+  border: 1px solid var(--edge);
+  background: var(--panel);
+}
+
+.maplibregl-ctrl-group button + button {
+  border-top-color: var(--edge);
+}
+
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(1);
+}
+
+@media (width <= 720px) {
+  .sidebar {
+    top: auto;
+    right: 12px;
+    bottom: 58px;
+    left: 12px;
+    width: auto;
+    max-height: 42%;
+  }
+
+  .attribution {
+    bottom: 8px;
+  }
+
+  /* The panels take the bottom of a narrow screen, so notices move under the header. */
+  .banners {
+    top: 74px;
+    bottom: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot-fresh {
+    box-shadow: none;
+  }
+}
