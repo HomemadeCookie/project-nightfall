@@ -90,16 +90,26 @@ Capability limits this constraint imposes, which you MUST NOT try to engineer ar
 
 ---
 
-## 2. CURRENT REPOSITORY STATE — no application code
+## 2. CURRENT REPOSITORY STATE — Phase 1 in progress
 
-This repository is intentionally **specification-only**. It contains `README.md` and
-`.cursorrules` and nothing else.
+The owner has authorised **Phase 1 (Map Generation and Initial Data Overlay)**: the core web
+app with a free ship and flight path data overlay (`README.md` § Milestones).
 
-* NEVER create application source files, `package.json`, `pyproject.toml`, Dockerfiles, CI
-  workflows, migrations, or scaffolding until the user explicitly requests implementation work
-  and names the phase.
-* "Set up the project", "get started", or "make it run" is NOT sufficient authorisation. Ask
-  which milestone phase and which deliverable.
+In scope for the current phase, and nothing beyond it:
+
+* `pipeline/` — the collect, transform, and bake stages for **mobility data only** (adsb.lol
+  aircraft positions and AISStream vessel positions).
+* `web/` — the static application: basemap plus the mobility overlay.
+* `.github/workflows/` — the scheduled collectors, the pipeline, CI, and the keepalive.
+
+Phase 1 publishes **observations, not insights**, so no accuracy specification is due yet
+(§ 7 governs insights; invariant 7 provenance still applies to every rendered observation).
+Weather, population, nightlights, routing, and insight generation belong to Phases 2 and 3:
+NEVER build them now, and NEVER stub them in a way that presumes their shape.
+
+* NEVER create source files for a later phase's deliverable until the owner names that phase.
+* "Set up the project", "get started", or "make it run" is NOT sufficient authorisation to
+  begin a new phase. Ask which milestone phase and which deliverable.
 * Documentation, diagrams, and ADRs are permitted at any time.
 
 ---

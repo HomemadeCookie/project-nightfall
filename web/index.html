@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="color-scheme" content="dark" />
+    <title>project nightfall — observed movement over the Philippines</title>
+    <meta
+      name="description"
+      content="Sampled aircraft and vessel movement over the Philippines, built from open data on a static site."
+    />
+    <!--
+      No third-party origin appears here. The browser must never call an upstream API
+      (invariant 1), and a font or analytics tag would be exactly that.
+
+      The icon is inline for the same reason a font would not be: it is the product's own mark,
+      and a separate file would be one more request that a host can answer with a page.
+    -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230b0e14'/><path d='M5 23 Q15 5 26 13' stroke='%23ffb03b' stroke-width='3' fill='none' stroke-linecap='round'/><circle cx='26' cy='13' r='3.4' fill='%23ffb03b'/></svg>"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      This map renders positions on the GPU from binary artifacts, which requires JavaScript.
+      The underlying data is published as open Parquet files in the project archive.
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
