@@ -15,6 +15,7 @@ from nightfall.sources.adsb_history import (
     last_observed_at,
     parse_trace,
     records_from_tar,
+    release_tag,
     seed_trace,
     trace_intersects_aoi,
 )
@@ -58,6 +59,12 @@ def test_last_observed_at_is_timezone_aware(trace_payload: bytes) -> None:
     moment = last_observed_at(trace_payload)
     assert moment.tzinfo is UTC
     assert moment == datetime(2025, 9, 12, 0, 13, 20, tzinfo=UTC)
+
+
+def test_release_tag_matches_adsblol_dots_not_iso_hyphens() -> None:
+    assert release_tag(date(2026, 9, 12), "planes-readsb-prod-0") == (
+        "v2026.09.12-planes-readsb-prod-0"
+    )
 
 
 def test_full_trace_members_are_recognised() -> None:

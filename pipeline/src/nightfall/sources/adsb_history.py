@@ -64,7 +64,7 @@ def history_repo(day: date) -> str:
 
 
 def release_tag(day: date, instance: str) -> str:
-    return f"v{day.isoformat()}-{instance}"
+    return f"v{day:%Y.%m.%d}-{instance}"
 
 
 def parse_trace(payload: bytes) -> list[dict[str, object]]:
