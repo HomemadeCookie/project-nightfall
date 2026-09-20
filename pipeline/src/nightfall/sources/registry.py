@@ -11,9 +11,26 @@ from collections.abc import Collection
 
 from nightfall.sources.adsb_lol import AdsbLolAdapter
 from nightfall.sources.aisstream import AisStreamAdapter
-from nightfall.sources.base import CommercialUse, Licence, SourceAdapter
+from nightfall.sources.base import CommercialUse, Licence, SourceAdapter, SourceFamily
+from nightfall.sources.boc_tdp import BocTdpAdapter
+from nightfall.sources.ppa import PpaAdapter
+from nightfall.sources.psa_imts import PsaImtsAdapter
+from nightfall.sources.un_comtrade import UnComtradeAdapter
 
-ADAPTERS: tuple[type[SourceAdapter], ...] = (AdsbLolAdapter, AisStreamAdapter)
+ADAPTERS: tuple[type[SourceAdapter], ...] = (
+    AdsbLolAdapter,
+    AisStreamAdapter,
+    BocTdpAdapter,
+    PpaAdapter,
+    PsaImtsAdapter,
+    UnComtradeAdapter,
+)
+
+
+def mobility_adapters() -> tuple[type[SourceAdapter], ...]:
+    """Adapters that feed the map overlay. Statistics sources are collected separately."""
+    return tuple(adapter for adapter in ADAPTERS if adapter.family is SourceFamily.MOBILITY)
+
 
 #: The project is non-commercial today (README § Risks). Flipping this to True must be a
 #: deliberate decision: it would also end the $0.00 guarantee, because the commercial escape

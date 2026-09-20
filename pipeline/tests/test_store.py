@@ -21,6 +21,7 @@ def test_suffix_follows_the_wire_format() -> None:
     """
     assert suffix_for("application/json") == ".json.gz"
     assert suffix_for("application/x-ndjson") == ".jsonl.gz"
+    assert suffix_for("text/html") == ".html.gz"
     with pytest.raises(ValueError, match="no landing-zone suffix"):
         suffix_for("text/csv")
 

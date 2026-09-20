@@ -166,6 +166,11 @@ def main(argv: list[str] | None = None) -> int:
         help="UTC calendar day to fetch (YYYY-MM-DD). Defaults to yesterday.",
     )
 
+    subcommands.add_parser(
+        "collect-stats",
+        help="fetch PPA, PSA IMTS, UN Comtrade, and probe the BOC portal",
+    )
+
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,
@@ -178,6 +183,14 @@ def main(argv: list[str] | None = None) -> int:
         return collect(args.source, settings)
     if args.command == "collect-history":
         return collect_history(settings, day=args.date or default_history_day())
+    if args.command == "collect-stats":
+        for source in ("ppa", "psa_imts", "un_comtrade", "boc_tdp"):
+            collect(source, settings)
+        from nightfall.stats import compile_official_stats
+
+        inventory = compile_official_stats(settings)
+        log.info("official_stats tables=%s", inventory["tables"])
+        return 0
     if args.command == "archive":
         return archive(settings)
     if args.command == "restore":
