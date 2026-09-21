@@ -21,6 +21,38 @@ models:
       - name: raw_object
         description: Landing-zone object name; the provenance key for invariant 7.
 
+  - name: raw_adsb_traces
+    description: >
+      One row per stored adsb.lol globe_history trace. Live `/v2` snapshots in the same
+      partition are ignored. Cold start yields an empty relation rather than an error.
+    columns:
+      - name: base_unix
+        description: Trace origin instant, Unix seconds.
+      - name: raw_object
+        description: Landing-zone object name; the provenance key for invariant 7.
+
+  - name: stg_adsb_trace_positions
+    description: >
+      globe_history fixes exploded from one trace file, typed and clipped to the Philippine
+      AOI. A line is still only joined later, and only across a gap we actually observed.
+    data_tests:
+      - nightfall.observed_at_is_plausible
+      - nightfall.position_is_in_aoi
+    columns:
+      - name: entity_id
+        description: ICAO 24-bit address, lowercased.
+        data_tests:
+          - not_null
+      - name: observed_at
+        description: Trace origin plus the per-point offset, when the fix was true.
+        data_tests:
+          - not_null
+      - name: mode
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["air"]
+
   - name: stg_adsb_positions
     description: adsb.lol aircraft positions, typed and clipped to the Philippine AOI.
     data_tests:

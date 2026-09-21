@@ -145,6 +145,39 @@ def _perpendicular_distance(
     return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
 
 
+def thin_fixes(fixes: Sequence[Fix], min_interval_s: float) -> tuple[Fix, ...]:
+    """Keep observed endpoints and any fix at least `min_interval_s` after the last kept one.
+
+    Dropping intermediate observations is not interpolation: every surviving vertex was
+    measured. Used when a day's traces would otherwise breach the frame budget. The first and
+    last fix always remain, so a thinned track still spans the time we actually watched.
+    """
+    if min_interval_s <= 0.0 or len(fixes) <= MIN_SEGMENT_POINTS:
+        return tuple(fixes)
+    kept: list[Fix] = [fixes[0]]
+    last = fixes[-1]
+    for fix in fixes[1:-1]:
+        if fix.epoch_s - kept[-1].epoch_s >= min_interval_s:
+            kept.append(fix)
+    if kept[-1] is not last:
+        kept.append(last)
+    return tuple(kept)
+
+
+def thin_tracks(tracks: Sequence[Track], min_interval_s: float) -> list[Track]:
+    """Apply `thin_fixes` to every track, preserving identity and source."""
+    return [
+        Track(
+            source=track.source,
+            mode=track.mode,
+            entity_id=track.entity_id,
+            label=track.label,
+            fixes=thin_fixes(track.fixes, min_interval_s),
+        )
+        for track in tracks
+    ]
+
+
 def simplify(track: Track, zoom: int) -> Track:
     """Drop vertices that cannot change what is drawn at `zoom`."""
     if len(track.fixes) <= MIN_SEGMENT_POINTS:

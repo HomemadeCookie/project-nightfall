@@ -18,7 +18,7 @@ import { join, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { type Manifest, parseManifest } from '../src/manifest';
+import { artifactSpan, type Manifest, parseManifest } from '../src/manifest';
 import { readString } from '../src/workers/bundles';
 import { decodePoints, decodeTracks } from '../src/workers/decode';
 
@@ -51,7 +51,20 @@ describe('the published manifest', () => {
   });
 
   it('carries the sampling notice the overlay must not be read without', () => {
-    expect(manifest.sampling_notice).toMatch(/sampled/i);
+    expect(manifest.sampling_notice).toMatch(/sampled|historical|fixture/i);
+  });
+
+  it('publishes entity and fix counts, and a slider domain equal to the baked min/max', () => {
+    expect(['live', 'archive', 'fixture', 'mixed']).toContain(manifest.observation_kind);
+    expect(manifest.census.air.position_fixes + manifest.census.sea.position_fixes).toBeGreaterThan(
+      0,
+    );
+    const [start, end] = artifactSpan(manifest);
+    expect(end).toBeGreaterThan(start);
+    if (manifest.available_from !== null && manifest.available_until !== null) {
+      expect(manifest.available_from).toBe(manifest.layers[0]?.observed_from);
+      expect(manifest.available_until).toBe(manifest.layers[0]?.observed_at);
+    }
   });
 
   it('covers every zoom from the first tier upward with exactly one track tier', () => {

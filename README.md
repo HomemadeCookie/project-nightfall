@@ -100,13 +100,23 @@ Every source below is free at the point of use and requires no payment method, p
 | Typhoon tracks (live) | JTWC public products | PAGASA Severe Weather Bulletin parse | No official PAGASA API exists; bulletins are free text and must be parsed defensively |
 | Typhoon tracks (historical) | NOAA IBTrACS v04r01 (WP basin subset) | — | Public domain; bulk CSV/NetCDF/Shapefile, ideal for seasonal baselines |
 | Ship positions (AIS) | AISStream.io WebSocket | — | Beta, unstable schema, **max 3 connections**, **browser connections forbidden**, drops messages on slow reads; consumed as bounded sampling windows since no persistent process is affordable |
-| Aircraft positions (ADS-B) | adsb.lol `/v2` | OpenSky Network `/states/all` | adsb.lol is ODbL and ~1 req/sec; OpenSky needs OAuth2, is non-commercial, and **may block hyperscaler IPs** |
+| Aircraft positions (ADS-B) | adsb.lol `/v2` (live windows) and adsb.lol `globe_history` daily dumps (one day, PH AOI) | OpenSky Network `/states/all` | adsb.lol is ODbL and ~1 req/sec; globe_history is the same licence, published as global daily tars on GitHub Releases with **no payment method**; OpenSky needs OAuth2, is non-commercial, and **may block hyperscaler IPs**. Years of traces will not fit the 1 GB / 300k-vertex budgets — see § Historical mobility window |
 | Population | WorldPop gridded population | — | Per-country rasters, hundreds of MB; must be clipped before use |
 | Nightlights | NASA Black Marble VNP46A3/A4 | WorldPop `ntl_viirs_g2` | Ships as HDF-EOS5, **not** COG; requires an Earthdata token and a conversion step |
 | Basemap, roads, ports | OpenStreetMap via Protomaps / Geofabrik PH extract | Overture Maps (places) | ODbL share-alike applies to derived geometry |
 | Admin boundaries | PSA/PhilGIS or GADM | — | Boundary vintage must be pinned; PH administrative units change |
 | **Ground truth** (census) | PSA Census of Population and Housing | — | Free and authoritative, but published in aggregate at administrative-unit level, so comparison against gridded WorldPop requires zonal aggregation, not point sampling |
 | **Ground truth** (weather) | Open-Meteo historical observations / archive | NOAA GFS analysis | Verification must compare a forecast against the observation for the *same* valid time, which is why forecasts are archived at issue time |
+
+### Historical mobility window
+
+Phase 1 asked for a Year A → Year B range over Philippine ships and flights. That range is **not fillable at $0.00**.
+
+**Aircraft.** adsb.lol publishes `globe_history_YYYY` daily dumps on GitHub Releases (ODbL 1.0, no payment method, no metered host). Coverage exists for calendar 2024, 2025, and 2026 through the most recently published day. Each day is a **global** split tar of several gigabytes. Ingesting years of it would breach GitHub Pages' 1 GB ceiling and the ≤300k path-vertex frame budget. The honest bake is **one UTC day**, traces clipped to the Philippine AOI, thinned only by dropping intermediate observed points if the budget still requires it. The range control is clamped to that day's first and last fix. OpenSky's historical / Impala interface needs an academic account and documents blocking hyperscaler IPs; paid ADS-B history (ADS-B Exchange, FlightAware) requires a card.
+
+**Vessels.** AISStream is a live WebSocket with no historical archive. Global Fishing Watch states its raw AIS is commercial. MarineCadastre and national coastal AIS dumps cover US / North Sea waters, not the Philippines. There is no free, no-card position archive for Philippine shipping. A licensed historical feed (MarineTraffic, Spire, exactEarth) is typically hundreds of dollars per month and is out of scope. Live AISStream windows remain the only approved collection path; when no API key is configured the overlay labels vessel rows as **fixture** and must not present them as an archive.
+
+**What the UI may offer.** A from–to control over the baked min/max (a day, or a few hours of a live sample), not a year picker that can be dragged into time nobody observed. `seed_demo.py` still builds a short fixture window so the app runs with no archive present. `seed_history.py` downloads one globe_history day and bakes it. The scheduled collector is unchanged: ephemeral live windows, not a 3.6 GB download on a standard runner.
 
 ### System Architecture
 
@@ -224,7 +234,7 @@ Stages 1 through 5 exist only while a scheduled job is running. Stage 6 is a set
 
 ## Milestones
 
-* **Phase 1 (Map Generation and Initial Data Overlay):** Develop the core web app with a free ship and flight path data overlay.
+* **Phase 1 (Map Generation and Initial Data Overlay):** Develop the core web app with a free ship and flight path data overlay. The overlay's time range is the span that was actually observed — one adsb.lol globe_history day over the Philippines, or a short live/fixture window — not a Year A–B archive that does not exist at $0.00. See § Historical mobility window.
 * **Phase 2 (Secondary and Live Data Overlay):** Estimate population additions from WorldPop (with Satellite Nightlight visualization) and overlay live weather data onto the map.
 * **Phase 3 (Processing and Insights Generation):** Generate useful business insights from the available data. Ensure insights are configurable per specific site. Establish each insight's accuracy specification by backtesting against archived history, and build the verification stage that gates them — an insight without a measured bound is not finished.
 * **Phase 4 (Testing & Launch):** Conduct quality assurance, refine rendering performance, execute deployment, and gather initial user feedback. Publish the accuracy report and confirm that a deliberately breached bound correctly withholds its insight.

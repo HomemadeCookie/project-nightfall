@@ -1,6 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AnimationClock, formatAge, formatManila, formatManilaTime } from './clock';
+import {
+  AnimationClock,
+  formatAge,
+  formatManila,
+  formatManilaTime,
+  formatObservedSpan,
+  fromManilaWallTime,
+  manilaTimeInput,
+  toManilaWallTime,
+} from './clock';
 
 describe('Manila presentation', () => {
   it('renders an instant in Philippine time regardless of the host zone', () => {
@@ -16,6 +25,33 @@ describe('Manila presentation', () => {
   it('never presents a bare local time without its zone', () => {
     expect(formatManila(new Date('2026-01-01T00:00:00Z'))).toContain('PHT');
     expect(formatManilaTime(new Date('2026-01-01T00:00:00Z'))).toContain('PHT');
+  });
+});
+
+describe('Manila wall-time conversion', () => {
+  it('round-trips a UTC instant through Philippine civil time', () => {
+    const instant = new Date('2026-09-12T16:05:00Z');
+    const wall = toManilaWallTime(instant);
+    expect(wall).toEqual({ year: 2026, month: 9, day: 13, hour: 0, minute: 5, second: 0 });
+    expect(fromManilaWallTime(wall).toISOString()).toBe(instant.toISOString());
+    expect(manilaTimeInput(instant)).toBe('00:05');
+  });
+});
+
+describe('formatObservedSpan', () => {
+  it('collapses a single Manila day to a clock range', () => {
+    expect(
+      formatObservedSpan(new Date('2026-09-11T19:42:00Z'), new Date('2026-09-11T19:45:00Z')),
+    ).toBe('12 Sep 2026, 03:42–03:45 PHT');
+  });
+
+  it('names whole years when that is the honest span', () => {
+    expect(
+      formatObservedSpan(
+        new Date('2019-01-01T00:00:00+08:00'),
+        new Date('2024-12-31T23:59:00+08:00'),
+      ),
+    ).toBe('2019–2024');
   });
 });
 
@@ -65,6 +101,17 @@ describe('AnimationClock', () => {
     const seen: number[] = [];
     clock.subscribe((seconds) => seen.push(seconds));
     expect(seen).toEqual([100]);
+  });
+
+  it('keeps the playable domain equal to the span it was given', () => {
+    // The slider must not be able to leave the baked min/max.
+    const clock = new AnimationClock(1);
+    clock.setRange(12, 84);
+    expect(clock.range).toEqual([12, 84]);
+    clock.setPosition(12);
+    expect(clock.currentPosition).toBe(12);
+    clock.setPosition(84);
+    expect(clock.currentPosition).toBe(84);
   });
 
   it('clamps a scrub to the range', () => {

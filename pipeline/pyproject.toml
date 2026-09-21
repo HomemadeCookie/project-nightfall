@@ -46,6 +46,7 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "DTZ", "T20", "RET", "S
 "scripts/summarise.py" = ["T201"]
 # `seed_demo.py` must put the repository on the path before it can import the test fixtures.
 "scripts/seed_demo.py" = ["E402"]
+"scripts/seed_history.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.13"

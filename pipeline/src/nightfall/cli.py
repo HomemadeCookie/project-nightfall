@@ -11,6 +11,7 @@ import argparse
 import asyncio
 import logging
 import time
+from datetime import date
 from pathlib import Path
 
 from nightfall.bake import bake
@@ -18,6 +19,7 @@ from nightfall.clock import utc_now
 from nightfall.config import Settings
 from nightfall.health import HealthReport
 from nightfall.sources import registry
+from nightfall.sources.adsb_history import collect_globe_history, default_history_day
 from nightfall.sources.base import SourceOutageError
 from nightfall.store import Archive, LocalRawStore
 from nightfall.transform import DEFAULT_LOOKBACK_HOURS, partition_dates, transform
@@ -53,6 +55,39 @@ def collect(name: str, settings: Settings) -> int:
             note or "complete",
         )
     report.write(settings.health_path.with_name(f"health_{name}.json"))
+    return 0
+
+
+def collect_history(settings: Settings, *, day: date) -> int:
+    """Fetch one globe_history day into raw/. Same source name as the live collector."""
+    report = HealthReport(run_id=settings.run_id)
+    try:
+        written = collect_globe_history(
+            LocalRawStore(settings.raw_root),
+            day=day,
+            user_agent=settings.user_agent,
+        )
+    except SourceOutageError as outage:
+        report.record(
+            source="adsb_lol",
+            state="outage",
+            detail=str(outage),
+        )
+        log.warning("source=adsb_lol state=outage detail=%s", outage)
+        report.write(settings.health_path.with_name("health_adsb_lol.json"))
+        return 0
+    report.record(
+        source="adsb_lol",
+        state="archive",
+        objects_written=len(written),
+        detail=f"adsb.lol globe_history {day.isoformat()}, Philippine AOI only",
+    )
+    log.info(
+        "source=adsb_lol state=archive day=%s objects_written=%d",
+        day.isoformat(),
+        len(written),
+    )
+    report.write(settings.health_path.with_name("health_adsb_lol.json"))
     return 0
 
 
@@ -120,6 +155,17 @@ def main(argv: list[str] | None = None) -> int:
     restore_parser = subcommands.add_parser("restore", help="fetch raw/ from the archive")
     restore_parser.add_argument("--lookback-hours", type=int, default=DEFAULT_LOOKBACK_HOURS)
 
+    history_parser = subcommands.add_parser(
+        "collect-history",
+        help="download one adsb.lol globe_history day and keep traces that intersect the AOI",
+    )
+    history_parser.add_argument(
+        "--date",
+        type=date.fromisoformat,
+        default=None,
+        help="UTC calendar day to fetch (YYYY-MM-DD). Defaults to yesterday.",
+    )
+
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,
@@ -130,6 +176,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "collect":
         return collect(args.source, settings)
+    if args.command == "collect-history":
+        return collect_history(settings, day=args.date or default_history_day())
     if args.command == "archive":
         return archive(settings)
     if args.command == "restore":

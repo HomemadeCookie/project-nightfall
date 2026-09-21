@@ -18,6 +18,8 @@ with unified as (
 
     select * from {{ ref('stg_adsb_positions') }}
     union all
+    select * from {{ ref('stg_adsb_trace_positions') }}
+    union all
     select * from {{ ref('stg_ais_positions') }}
 
 ),

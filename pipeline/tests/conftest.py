@@ -155,19 +155,56 @@ def seed_ais_window(
     start: datetime = FIXTURE_AT,
     origin: tuple[float, float] = AIS_ORIGIN,
     spacing: tuple[float, float] = AIS_SPACING,
+    vessels: int = 3,
+    reports: int = 5,
+    interval_s: float = 30.0,
 ) -> str:
     """Write one AIS sampling window into the landing zone."""
     from nightfall.store import LocalRawStore
 
     return LocalRawStore(settings.raw_root).put(
         source="aisstream",
-        request_key=f"stream/ph/{window_s:.0f}s",
-        body=ais_frames(start=start, origin=origin, spacing=spacing),
+        request_key=f"stream/ph/{start.strftime('%Y%m%dT%H%M%SZ')}/{window_s:.0f}s",
+        body=ais_frames(
+            vessels=vessels,
+            reports=reports,
+            interval_s=interval_s,
+            start=start,
+            origin=origin,
+            spacing=spacing,
+        ),
         # The object is stamped with the moment the window closed, which is what the transform
         # subtracts the declared window length from.
         observed_at=start + timedelta(seconds=window_s),
         content_type="application/x-ndjson",
     )
+
+
+def seed_ais_windows(
+    settings: Settings,
+    starts: list[datetime],
+    *,
+    window_s: float = 400.0,
+    origin: tuple[float, float] = AIS_ORIGIN,
+    spacing: tuple[float, float] = AIS_SPACING,
+    vessels: int = 40,
+    reports: int = 20,
+    interval_s: float = 20.0,
+) -> list[str]:
+    """Several bounded AIS sampling windows, not one interpolated voyage."""
+    return [
+        seed_ais_window(
+            settings,
+            window_s=window_s,
+            start=start,
+            origin=origin,
+            spacing=spacing,
+            vessels=vessels,
+            reports=reports,
+            interval_s=interval_s,
+        )
+        for start in starts
+    ]
 
 
 def seed_window(

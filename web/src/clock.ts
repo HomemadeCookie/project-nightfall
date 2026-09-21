@@ -14,6 +14,9 @@
 
 export const PH_TIME_ZONE = 'Asia/Manila';
 
+/** Asia/Manila is UTC+8 year-round. The conversion boundary stays in this file. */
+export const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000;
+
 const MANILA_FORMAT = new Intl.DateTimeFormat('en-GB', {
   timeZone: PH_TIME_ZONE,
   year: 'numeric',
@@ -39,6 +42,85 @@ export function formatManila(instant: Date): string {
 
 export function formatManilaTime(instant: Date): string {
   return `${MANILA_TIME_ONLY.format(instant)} PHT`;
+}
+
+export interface ManilaWallTime {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+}
+
+/** Break an instant into Philippine civil time. Storage stays UTC. */
+export function toManilaWallTime(instant: Date): ManilaWallTime {
+  const shifted = new Date(instant.getTime() + MANILA_OFFSET_MS);
+  return {
+    year: shifted.getUTCFullYear(),
+    month: shifted.getUTCMonth() + 1,
+    day: shifted.getUTCDate(),
+    hour: shifted.getUTCHours(),
+    minute: shifted.getUTCMinutes(),
+    second: shifted.getUTCSeconds(),
+  };
+}
+
+/** Compose a UTC instant from Philippine civil time. */
+export function fromManilaWallTime(parts: ManilaWallTime): Date {
+  return new Date(
+    Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second) -
+      MANILA_OFFSET_MS,
+  );
+}
+
+function pad2(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+export function manilaTimeInput(instant: Date): string {
+  const wall = toManilaWallTime(instant);
+  return `${pad2(wall.hour)}:${pad2(wall.minute)}`;
+}
+
+export function manilaDateInput(instant: Date): string {
+  const wall = toManilaWallTime(instant);
+  return `${wall.year}-${pad2(wall.month)}-${pad2(wall.day)}`;
+}
+
+/**
+ * Plain-language observed span in Manila time.
+ *
+ * A few minutes of one day reads as a clock range. Separate years read as years, because
+ * "2019-01-01 00:00 PHT – 2024-12-31 23:59 PHT" is how a missing archive pretends to be data.
+ */
+export function formatObservedSpan(from: Date, to: Date): string {
+  const start = toManilaWallTime(from);
+  const end = toManilaWallTime(to);
+  if (
+    start.year !== end.year &&
+    start.month === 1 &&
+    start.day === 1 &&
+    end.month === 12 &&
+    end.day === 31
+  ) {
+    return `${start.year}–${end.year}`;
+  }
+  if (start.year === end.year && start.month === end.month && start.day === end.day) {
+    return (
+      `${start.day} ${manilaMonth(start.month)} ${start.year}, ` +
+      `${pad2(start.hour)}:${pad2(start.minute)}–${pad2(end.hour)}:${pad2(end.minute)} PHT`
+    );
+  }
+  return `${formatManila(from)} – ${formatManila(to)}`;
+}
+
+function manilaMonth(month: number): string {
+  return (
+    ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][
+      month - 1
+    ] ?? '???'
+  );
 }
 
 /** Human-readable age. Used for freshness, where "3 hours ago" is the actual message. */
@@ -72,6 +154,14 @@ export class AnimationClock {
 
   constructor(rate: number) {
     this.rate = rate;
+  }
+
+  setRate(rate: number): void {
+    this.rate = rate;
+  }
+
+  get playbackRate(): number {
+    return this.rate;
   }
 
   setRange(start: number, end: number): void {

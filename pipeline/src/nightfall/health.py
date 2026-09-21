@@ -15,7 +15,7 @@ from typing import Literal
 
 from nightfall.clock import isoformat_z, utc_now
 
-SourceState = Literal["ok", "outage", "not_configured"]
+SourceState = Literal["ok", "outage", "not_configured", "fixture", "archive"]
 
 
 @dataclass(slots=True)
