@@ -1,0 +1,20 @@
+name: Label New Issues
+on:
+  issues: 
+    types: [opened]
+
+jobs:
+  add-help-wanted-label:
+    runs-on: ubuntu-latest
+
+    permissions:
+      issues: write
+
+    steps:
+      - name: Add help wanted label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+        run: |
+          gh issue edit $ISSUE_URL --add-label "help wanted"
+      
