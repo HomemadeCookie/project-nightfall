@@ -214,6 +214,8 @@ def test_an_unconfigured_source_is_reported_not_hidden(baked: Settings) -> None:
     manifest = bake(baked, now=FIXTURE_AT + timedelta(minutes=10))
     states = {source.source: source.state for source in manifest.sources}
     assert states["aisstream"] == "not_configured"
+    assert "ppa" not in states
+    assert "psa_imts" not in states
 
 
 def test_stale_data_is_labelled_rather_than_served_as_current(baked: Settings) -> None:

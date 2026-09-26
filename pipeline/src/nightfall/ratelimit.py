@@ -145,3 +145,31 @@ OPEN_METEO_QUOTA = Quota(
     max_concurrent=4,
     source="open-meteo free tier: 600/min, 5000/hour, 10000/day",
 )
+
+#: PPA does not publish a rate limit. Annual Excel files are a handful of requests.
+PPA_QUOTA = Quota(
+    windows=(Window(capacity=1, seconds=2.0),),
+    max_concurrent=1,
+    source="ppa.com.ph publishes no quota; paced at 1 request / 2 s",
+)
+
+#: PX-Web at OpenSTAT. No published quota; the API is shared across all PSA tables.
+PSA_QUOTA = Quota(
+    windows=(Window(capacity=1, seconds=1.0),),
+    max_concurrent=1,
+    source="openstat.psa.gov.ph PX-Web; no published quota, paced at 1/s",
+)
+
+#: UN Comtrade public preview: 500 rows per call, rate-limited, no pagination.
+COMTRADE_QUOTA = Quota(
+    windows=(Window(capacity=1, seconds=2.0),),
+    max_concurrent=1,
+    source="comtradeapi.un.org public preview; 500 rows/call, paced at 1/2 s",
+)
+
+#: BOC Trade Data Platform is a request portal, not a feed. One probe per run.
+BOC_QUOTA = Quota(
+    windows=(Window(capacity=1, seconds=5.0),),
+    max_concurrent=1,
+    source="tradedata.customs.gov.ph is a request portal; one probe per collection",
+)
