@@ -33,6 +33,8 @@ def request_hash(request_key: str) -> str:
 SUFFIX_BY_CONTENT_TYPE = {
     "application/json": ".json.gz",
     "application/x-ndjson": ".jsonl.gz",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx.gz",
+    "text/html": ".html.gz",
 }
 
 

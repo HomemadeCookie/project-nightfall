@@ -1,0 +1,30 @@
+{
+  "elapsedTime": "0.01 secs",
+  "count": 2,
+  "data": [
+    {
+      "typeCode": "C",
+      "freqCode": "A",
+      "refYear": 2023,
+      "period": "2023",
+      "reporterCode": 608,
+      "flowCode": "M",
+      "partnerCode": 0,
+      "cmdCode": "10",
+      "primaryValue": 1234567890.0,
+      "netWgt": 4000000.0
+    },
+    {
+      "typeCode": "C",
+      "freqCode": "A",
+      "refYear": 2023,
+      "period": "2023",
+      "reporterCode": 608,
+      "flowCode": "M",
+      "partnerCode": 0,
+      "cmdCode": "27",
+      "primaryValue": 9876543210.0,
+      "netWgt": 8000000.0
+    }
+  ]
+}

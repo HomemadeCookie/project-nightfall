@@ -1,0 +1,21 @@
+{
+  "columns": [
+    {"code": "Year", "text": "Year", "type": "t"},
+    {"code": "Month", "text": "Month", "type": "d"},
+    {"code": "Variables", "text": "Variables", "type": "d"},
+    {
+      "code": "Philippine Total Trade",
+      "text": "Philippine Total Trade, Imports, Exports, and Balance of Trade in Goods by Month and Year: 1991-2025P",
+      "type": "c"
+    }
+  ],
+  "comments": [],
+  "data": [
+    {"key": ["33", "0", "0"], "values": ["6120"]},
+    {"key": ["33", "0", "1"], "values": ["10200"]},
+    {"key": ["33", "0", "3"], "values": ["16320"]},
+    {"key": ["33", "12", "0"], "values": ["73269"]},
+    {"key": ["33", "12", "1"], "values": ["127597"]},
+    {"key": ["33", "12", "3"], "values": ["200865"]}
+  ]
+}

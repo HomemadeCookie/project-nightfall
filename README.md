@@ -105,6 +105,9 @@ Every source below is free at the point of use and requires no payment method, p
 | Nightlights | NASA Black Marble VNP46A3/A4 | WorldPop `ntl_viirs_g2` | Ships as HDF-EOS5, **not** COG; requires an Earthdata token and a conversion step |
 | Basemap, roads, ports | OpenStreetMap via Protomaps / Geofabrik PH extract | Overture Maps (places) | ODbL share-alike applies to derived geometry |
 | Admin boundaries | PSA/PhilGIS or GADM | — | Boundary vintage must be pinned; PH administrative units change |
+| Port throughput (analysis) | PPA Summary Port Statistics (annual xlsx, quarterly regional grid) | — | Official ship calls, cargo tonnes, TEU, passengers, RoRo. **Not a map overlay in Phase 1.** `www.ppa.com.ph` omits its Sectigo intermediate; the collector completes the chain from Sectigo rather than disabling TLS. |
+| Merchandise trade (analysis) | PSA OpenSTAT IMTS (PX-Web) | UN Comtrade public preview (`/public/v1/preview`, reporter 608) | PSA is compiled from BOC declarations and is the official published form. PX-Web `json-stat2` on the totals table is a stub; the collector stores PX-Web `json`. Comtrade preview is keyless, **500 rows/call, no pagination** — queries are narrowed (HS-2 × World; TOTAL × partners) and a 500-row response is labelled truncated. |
+| Customs declarations | BOC Trade Data Platform (probe only) | PSA IMTS | CMO 04-2024 is a request portal, not a bulk extract. There is no free machine-readable BOC dump this project will treat as official. Unofficial 65-million-row scrapes are out of scope. |
 | **Ground truth** (census) | PSA Census of Population and Housing | — | Free and authoritative, but published in aggregate at administrative-unit level, so comparison against gridded WorldPop requires zonal aggregation, not point sampling |
 | **Ground truth** (weather) | Open-Meteo historical observations / archive | NOAA GFS analysis | Verification must compare a forecast against the observation for the *same* valid time, which is why forecasts are archived at issue time |
 
@@ -117,6 +120,19 @@ Phase 1 asked for a Year A → Year B range over Philippine ships and flights. T
 **Vessels.** AISStream is a live WebSocket with no historical archive. Global Fishing Watch states its raw AIS is commercial. MarineCadastre and national coastal AIS dumps cover US / North Sea waters, not the Philippines. There is no free, no-card position archive for Philippine shipping. A licensed historical feed (MarineTraffic, Spire, exactEarth) is typically hundreds of dollars per month and is out of scope. Live AISStream windows remain the only approved collection path; when no API key is configured the overlay labels vessel rows as **fixture** and must not present them as an archive.
 
 **What the UI may offer.** A from–to control over the baked min/max (a day, or a few hours of a live sample), not a year picker that can be dragged into time nobody observed. `seed_demo.py` still builds a short fixture window so the app runs with no archive present. `seed_history.py` downloads one globe_history day and bakes it. The scheduled collector is unchanged: ephemeral live windows, not a 3.6 GB download on a standard runner.
+
+### Official trade and port statistics
+
+These tables are **analysis inputs**, not a second animation. Grain is month or quarter. They must not share the mobility playhead: PPA TEU for 2024 Q3 is not “where ships were at 14:32”.
+
+| Dataset | Grain | Geography | What it answers |
+| --- | --- | --- | --- |
+| PPA Summary Port Statistics | quarter + year | five PPA regions + national total | Ship calls, cargo tonnes, TEU, passengers, RoRo |
+| PSA IMTS monthly totals | month, 1991–present | Philippines | Exports, imports, total trade, balance (million USD) |
+| UN Comtrade preview | year | HS chapter × World; TOTAL × partner | Commodity mix and partner mix, truncated at 500 rows/call |
+| BOC TDP | — | — | No bulk file. Use PSA IMTS. |
+
+Collect with `uv run --project pipeline nightfall collect-stats` (live) or `uv run --project pipeline python pipeline/scripts/seed_trade.py --fixtures` (CI / no network). Tidy parquet lands under `build/curated/v1/official_stats/` and is gitignored. Overlaying these on the map is Phase 3.
 
 ### System Architecture
 

@@ -55,6 +55,7 @@ from nightfall.geo import (
     PH_AOI,
 )
 from nightfall.sources import registry
+from nightfall.sources.base import SourceFamily
 
 #: Frame budget (README § Risks, browser performance). Enforced, not aspirational.
 MAX_PATH_VERTICES = 300_000
@@ -160,16 +161,23 @@ def _read_health(settings: Settings) -> list[SourceHealth]:
     for path in sorted(settings.serving_dir.glob("health_*.json")):
         document = json.loads(path.read_text())
         for entry in document.get("sources", []):
+            name = entry["source"]
+            adapter_type = next(
+                (adapter for adapter in registry.ADAPTERS if adapter.name == name),
+                None,
+            )
+            if adapter_type is not None and adapter_type.family is not SourceFamily.MOBILITY:
+                continue
             reports.append(
                 SourceHealth(
-                    source=entry["source"],
+                    source=name,
                     state=entry["state"],
                     observed_at=entry.get("observed_at"),
                     detail=entry.get("detail"),
                 )
             )
     known = {report.source for report in reports}
-    for adapter in registry.ADAPTERS:
+    for adapter in registry.mobility_adapters():
         if adapter.name not in known:
             reports.append(SourceHealth(source=adapter.name, state="not_configured"))
     return sorted(reports, key=lambda report: report.source)

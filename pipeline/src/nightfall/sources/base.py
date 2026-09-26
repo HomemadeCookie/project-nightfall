@@ -32,6 +32,18 @@ class CommercialUse(StrEnum):
     SHARE_ALIKE = "share_alike"
 
 
+class SourceFamily(StrEnum):
+    """What a source is for, which decides whether it may appear on the Phase 1 map.
+
+    Mobility adapters feed the overlay. Statistics adapters land official tables for
+    later analysis; they must not show up as 'not configured' on a map that does not
+    draw them (README § Milestones, Phase 3).
+    """
+
+    MOBILITY = "mobility"
+    STATISTICS = "statistics"
+
+
 @dataclass(frozen=True, slots=True)
 class Licence:
     name: str
@@ -106,6 +118,7 @@ class SourceAdapter(ABC):
     name: str
     licence: Licence
     quota: Quota
+    family: SourceFamily = SourceFamily.MOBILITY
 
     #: Documented ceiling on consecutive upstream failures before the circuit opens.
     max_attempts: int = 4
