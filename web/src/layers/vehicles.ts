@@ -48,6 +48,18 @@ export function bearingDegrees(lon1: number, lat1: number, lon2: number, lat2: n
 }
 
 /**
+ * IconLayer `getAngle` for a nose-up atlas icon.
+ *
+ * The plane and ship are drawn with the nose toward canvas −Y (top of the PNG).
+ * IconLayer then rotates in its own pixel space and flips Y into clip space, so a
+ * positive `getAngle` turns that nose west, not east. Negating the geographic
+ * bearing undoes that, and a northbound vehicle stays at 0.
+ */
+export function iconAngleDegrees(bearing: number): number {
+  return -bearing;
+}
+
+/**
  * Interpolate one path to `currentTime`.
  *
  * Returns null when the playhead has not reached the path, or — while playing — when the
@@ -230,7 +242,6 @@ export function vehicleLayer(options: VehicleLayerOptions): DeckLayer {
       length,
       attributes: {
         getPosition: { value: positions, size: 2 },
-        getAngle: { value: angles, size: 1 },
         getFilterValue: { value: filters, size: 2 },
       },
     },
@@ -240,6 +251,9 @@ export function vehicleLayer(options: VehicleLayerOptions): DeckLayer {
       modes[info.index] === MODE_SEA ? 'ship' : 'plane',
     getColor: (_: unknown, info: { index: number }) =>
       modes[info.index] === MODE_SEA ? SEA_COLOUR : AIR_COLOUR,
+    // IconLayer's default `getAngle` is the constant 0. A binary `attributes.getAngle`
+    // is easy to ignore on that path, so heading is a per-instance accessor like colour.
+    getAngle: (_: unknown, info: { index: number }) => iconAngleDegrees(angles[info.index] ?? 0),
     extensions: [MODE_TIME_FILTER],
     filterRange: range ?? [
       [MODE_AIR, MODE_SEA],

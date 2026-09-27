@@ -5,6 +5,7 @@ import {
   allocateVehicleBuffers,
   bearingDegrees,
   headAlongTrack,
+  iconAngleDegrees,
   writeTrackHeads,
 } from './vehicles';
 
@@ -24,8 +25,22 @@ const TRACKS: TracksBundle = {
 };
 
 describe('bearingDegrees', () => {
+  it('is 0 degrees for a step due north', () => {
+    expect(bearingDegrees(0, 0, 0, 1)).toBeCloseTo(0, 0);
+  });
+
   it('is 90 degrees for a step due east on the equator', () => {
     expect(bearingDegrees(0, 0, 1, 0)).toBeCloseTo(90, 0);
+  });
+});
+
+describe('iconAngleDegrees', () => {
+  it('leaves a northbound heading unrotated so the nose stays up', () => {
+    expect(iconAngleDegrees(0)).toBeCloseTo(0, 5);
+  });
+
+  it('turns an eastbound heading so IconLayer rotates the nose to the right', () => {
+    expect(iconAngleDegrees(90)).toBeCloseTo(-90, 5);
   });
 });
 
@@ -37,11 +52,12 @@ describe('headAlongTrack', () => {
     expect(headAlongTrack(TRACKS.positions, TRACKS.timestamps, start, end, -1, false)).toBeNull();
   });
 
-  it('interpolates halfway along the first segment', () => {
+  it('interpolates halfway along the first segment and faces along it', () => {
     const head = headAlongTrack(TRACKS.positions, TRACKS.timestamps, start, end, 15, false);
     expect(head).not.toBeNull();
     expect(head?.lon).toBeCloseTo(121.05, 5);
     expect(head?.lat).toBeCloseTo(14.55, 5);
+    expect(head?.angle).toBeCloseTo(bearingDegrees(121, 14.5, 121.1, 14.6), 5);
   });
 
   it('sits on the last fix once the playhead is past the path', () => {
@@ -62,6 +78,7 @@ describe('writeTrackHeads', () => {
     const buffers = allocateVehicleBuffers(TRACKS.length);
     writeTrackHeads(TRACKS, 15, false, buffers);
     expect(buffers.positions[0]).toBeCloseTo(121.05, 5);
+    expect(buffers.angles[0]).toBeCloseTo(bearingDegrees(121, 14.5, 121.1, 14.6), 5);
     expect(buffers.filters[0]).toBe(MODE_AIR);
     expect(buffers.filters[2]).toBe(MODE_SEA);
     // The vessel starts at t=10, so it is visible; the filter time stays inside the range.
