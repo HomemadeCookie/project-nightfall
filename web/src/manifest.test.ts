@@ -117,8 +117,9 @@ describe('layersForZoom', () => {
     expect(layersForZoom(parsed, 12, 'tracks')[0]?.id).toBe('z12');
   });
 
-  it('does not mix kinds', () => {
-    expect(layersForZoom(parsed, 6, 'tracks')).toHaveLength(0);
+  it('falls back to the coarsest tracks when zoomed out of every published band', () => {
+    expect(layersForZoom(parsed, 6, 'tracks')).toHaveLength(1);
+    expect(layersForZoom(parsed, 6, 'tracks')[0]?.id).toBe('z9');
     expect(layersForZoom(parsed, 6, 'points')).toHaveLength(1);
   });
 });

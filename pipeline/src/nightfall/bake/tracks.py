@@ -35,8 +35,8 @@ EQUATOR_METRES_PER_PIXEL_Z0 = 156_543.033_928_041
 #: cannot change what is drawn.
 TOLERANCE_PX = 1.0
 
-#: Zoom tiers the tracks are baked for. Individual tracks are only shown at zoom 9 and above
-#: (`.cursorrules` § 6), so the coarser tier is the one that governs the budget.
+#: Zoom tiers the tracks are baked for. The coarsest tier is served from zoom 0; simplification
+#: still uses these zoom values as the on-screen tolerance.
 ZOOM_TIERS = (9, 12)
 
 

@@ -94,7 +94,7 @@ class Layer(BaseModel):
     url: str
     format: Literal["arrow-ipc"] = "arrow-ipc"
     schema_version: int
-    #: Zoom range this artifact is simplified for. Tracks are only drawn at zoom 9 and above.
+    #: Zoom range this artifact is simplified for. The coarsest track tier starts at zoom 0.
     min_zoom: int
     max_zoom: int
     #: Seconds in `timestamps` are relative to this instant; float32 cannot carry a Unix time.

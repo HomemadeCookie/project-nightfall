@@ -275,7 +275,7 @@ def bake(
                 kind="tracks",
                 url=path.name,
                 schema_version=SCHEMA_VERSION,
-                min_zoom=zoom,
+                min_zoom=0 if index == 0 else zoom,
                 max_zoom=ZOOM_TIERS[index + 1] - 1 if index + 1 < len(ZOOM_TIERS) else 24,
                 epoch=isoformat_z(from_unix(epoch_s)),
                 observed_from=isoformat_z(observed_from) if observed_from else None,

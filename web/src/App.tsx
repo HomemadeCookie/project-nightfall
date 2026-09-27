@@ -14,7 +14,7 @@ import { FreshnessPanel } from './components/FreshnessPanel';
 import { MapView } from './components/MapView';
 import { RangeControl } from './components/RangeControl';
 import { TimeScrubber } from './components/TimeScrubber';
-import { MANIFEST_URL, MIN_TRACK_ZOOM } from './config';
+import { MANIFEST_URL } from './config';
 import { type Manifest, ManifestVersionError, parseManifest } from './manifest';
 import { useAppStore } from './store';
 
@@ -120,7 +120,6 @@ function LayerToggles(): React.JSX.Element {
   const showSea = useAppStore((state) => state.showSea);
   const toggleAir = useAppStore((state) => state.toggleAir);
   const toggleSea = useAppStore((state) => state.toggleSea);
-  const zoom = useAppStore((state) => state.zoom);
 
   return (
     <section className="panel" aria-label="Layers">
@@ -134,15 +133,6 @@ function LayerToggles(): React.JSX.Element {
         <span className="swatch swatch-sea" aria-hidden="true" />
         Vessels
       </label>
-
-      {zoom < MIN_TRACK_ZOOM ? (
-        // Said rather than left to inference. Below the gate the overlay draws nothing, and a
-        // blank map is indistinguishable from an absence of traffic.
-        <p className="notice small">
-          Individual tracks are drawn from zoom {MIN_TRACK_ZOOM}. Zoom in to see them; area
-          summaries for wider views come in a later phase.
-        </p>
-      ) : null}
     </section>
   );
 }

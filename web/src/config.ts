@@ -23,9 +23,6 @@ export const MANIFEST_URL = servingUrl('manifest.json');
  */
 export const BASEMAP_URL = servingUrl('basemap.pmtiles');
 
-/** Individual tracks are only drawn from this zoom up (`.cursorrules` § 6). */
-export const MIN_TRACK_ZOOM = 9;
-
 /** How long a trail persists behind the animation head, in artifact seconds. */
 export const TRAIL_LENGTH_S = 240;
 

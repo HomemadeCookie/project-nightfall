@@ -30,13 +30,7 @@ import { useEffect, useRef } from 'react';
 
 import { basemapAvailable, basemapStyle, blankStyle } from '../basemap';
 import { AnimationClock } from '../clock';
-import {
-  BASEMAP_URL,
-  MIN_TRACK_ZOOM,
-  PLAYBACK_RATE,
-  playbackRateForSpan,
-  servingUrl,
-} from '../config';
+import { BASEMAP_URL, PLAYBACK_RATE, playbackRateForSpan, servingUrl } from '../config';
 import {
   filterRange,
   pointColours,
@@ -49,6 +43,13 @@ import {
   vertexFilters,
   vertexModes,
 } from '../layers/mobility';
+import {
+  allocateVehicleBuffers,
+  pointAngles,
+  type VehicleBuffers,
+  vehicleLayer,
+  writeTrackHeads,
+} from '../layers/vehicles';
 import { layersForZoom, type Manifest } from '../manifest';
 import { type HoverTarget, useAppStore } from '../store';
 import type { PointsBundle, TracksBundle } from '../workers/bundles';
@@ -63,8 +64,21 @@ export const animationClock = new AnimationClock(PLAYBACK_RATE);
 
 /** Decoded artifacts plus the GPU attributes derived from them, built once per load. */
 interface Loaded {
-  tracks: Map<string, { bundle: TracksBundle; colours: Uint8Array; filters: Float32Array }>;
-  points: { bundle: PointsBundle; colours: Uint8Array; filters: Float32Array } | null;
+  tracks: Map<
+    string,
+    {
+      bundle: TracksBundle;
+      colours: Uint8Array;
+      filters: Float32Array;
+      vehicles: VehicleBuffers;
+    }
+  >;
+  points: {
+    bundle: PointsBundle;
+    colours: Uint8Array;
+    filters: Float32Array;
+    angles: Float32Array;
+  } | null;
 }
 
 export function MapView({ manifest }: { manifest: Manifest }): React.JSX.Element {
@@ -258,6 +272,7 @@ async function loadArtifacts(manifest: Manifest, into: Loaded): Promise<string[]
           bundle,
           colours: vertexColours(bundle),
           filters: vertexFilters(modes, bundle.timestamps),
+          vehicles: allocateVehicleBuffers(bundle.length),
         });
       } else {
         const bundle = await loadPoints(servingUrl(layer.url));
@@ -266,6 +281,7 @@ async function loadArtifacts(manifest: Manifest, into: Loaded): Promise<string[]
           bundle,
           colours: pointColours(bundle),
           filters: pointFilters(modes, bundle.timestamps),
+          angles: pointAngles(bundle.length),
         };
       }
     }),
@@ -309,23 +325,31 @@ function buildLayers(loaded: Loaded, zoom: number, inputs: RenderInputs): DeckLa
   const [spanStart] = animationClock.range;
   const range = timeFilterRange(filterRange(showAir, showSea), spanStart, currentTime);
 
-  // Zoom-gated level of detail: individual tracks only from zoom 9 (`.cursorrules` § 6).
-  if (zoom >= MIN_TRACK_ZOOM) {
-    for (const descriptor of layersForZoom(manifest, zoom, 'tracks')) {
-      const entry = loaded.tracks.get(descriptor.id);
-      if (entry === undefined) continue;
-      layers.push(
-        trackLayer({
-          id: descriptor.id,
-          bundle: entry.bundle,
-          colours: entry.colours,
-          filters: entry.filters,
-          range,
-          currentTime,
-          playing,
-        }),
-      );
-    }
+  for (const descriptor of layersForZoom(manifest, zoom, 'tracks')) {
+    const entry = loaded.tracks.get(descriptor.id);
+    if (entry === undefined) continue;
+    writeTrackHeads(entry.bundle, currentTime, playing, entry.vehicles);
+    layers.push(
+      trackLayer({
+        id: descriptor.id,
+        bundle: entry.bundle,
+        colours: entry.colours,
+        filters: entry.filters,
+        range,
+        currentTime,
+        playing,
+      }),
+      vehicleLayer({
+        id: `${descriptor.id}-vehicles`,
+        length: entry.bundle.length,
+        positions: entry.vehicles.positions,
+        angles: entry.vehicles.angles,
+        modes: entry.bundle.modes,
+        filters: entry.vehicles.filters,
+        range,
+        currentTime,
+      }),
+    );
   }
 
   if (loaded.points !== null) {
@@ -336,6 +360,16 @@ function buildLayers(loaded: Loaded, zoom: number, inputs: RenderInputs): DeckLa
         colours: loaded.points.colours,
         filters: loaded.points.filters,
         range,
+      }),
+      vehicleLayer({
+        id: 'mobility-points-vehicles',
+        length: loaded.points.bundle.length,
+        positions: loaded.points.bundle.positions,
+        angles: loaded.points.angles,
+        modes: loaded.points.bundle.modes,
+        filters: loaded.points.filters,
+        range,
+        currentTime,
       }),
     );
   }
@@ -351,8 +385,9 @@ function buildLayers(loaded: Loaded, zoom: number, inputs: RenderInputs): DeckLa
 function describe(loaded: Loaded, info: PickingInfo): HoverTarget | null {
   const layerId = info.layer?.id;
   if (layerId === undefined || info.index < 0) return null;
-  const entry = loaded.tracks.get(layerId);
-  const bundle = entry?.bundle ?? (layerId === 'mobility-points' ? loaded.points?.bundle : null);
+  const sourceId = layerId.endsWith('-vehicles') ? layerId.slice(0, -'-vehicles'.length) : layerId;
+  const entry = loaded.tracks.get(sourceId);
+  const bundle = entry?.bundle ?? (sourceId === 'mobility-points' ? loaded.points?.bundle : null);
   if (bundle === null || bundle === undefined) return null;
 
   const label = readString(bundle.labels, info.index);

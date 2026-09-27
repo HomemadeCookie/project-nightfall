@@ -56,12 +56,8 @@ class BoundingBox:
 PH_AOI = BoundingBox(west=116.0, south=4.0, east=127.0, north=21.5)
 
 #: Default map view: Manila Bay and the Batangas corridor, the densest convergence of port,
-#: air, and population activity in the country.
-#:
-#: The zoom is not a framing preference. Individual tracks are drawn from zoom 9 up, and area
-#: aggregates — the right representation below that — arrive in a later phase, so opening any
-#: wider would present an empty map as the product's first impression and make an absence of
-#: rendering indistinguishable from an absence of traffic.
+#: air, and population activity in the country. Tracks draw at every zoom, so pulling back
+#: still shows the sample rather than an empty sea.
 DEFAULT_VIEW_LON = 120.98
 DEFAULT_VIEW_LAT = 14.58
 DEFAULT_VIEW_ZOOM = 9.0
@@ -75,10 +71,10 @@ VIEW_PAN_MARGIN_DEG = 2.0
 #: tile is transfer someone else pays for, and no less, since the edge would be visible.
 BASEMAP_BBOX = PH_AOI.grown(VIEW_PAN_MARGIN_DEG)
 
-#: Zoom ceiling for the basemap. The overlay draws individual tracks from zoom 9, and at zoom
-#: 10 the basemap is already a legible coastline-and-roads reference. Carrying it to 14 would
-#: multiply the extract by more than an order of magnitude for detail this product never asks a
-#: question about; MapLibre scales vector geometry past the ceiling, so zooming in stays sharp.
+#: Zoom ceiling for the basemap. At zoom 10 the coastline-and-roads reference is already
+#: legible. Carrying it to 14 would multiply the extract by more than an order of magnitude
+#: for detail this product never asks a question about; MapLibre scales vector geometry past
+#: the ceiling, so zooming in stays sharp.
 BASEMAP_MAX_ZOOM = 10
 
 

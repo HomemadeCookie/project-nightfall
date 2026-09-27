@@ -115,9 +115,17 @@ export function parseManifest(payload: unknown): Manifest {
 
 /** Layers that apply at a given zoom, in manifest order. */
 export function layersForZoom(manifest: Manifest, zoom: number, kind: Layer['kind']): Layer[] {
-  return manifest.layers.filter(
+  const matching = manifest.layers.filter(
     (layer) => layer.kind === kind && zoom >= layer.min_zoom && zoom <= layer.max_zoom,
   );
+  if (matching.length > 0) return matching;
+  // Older serving sets marked the coarsest tracks as zoom 9+. Tracks still draw when pulled
+  // back: this window is already clipped to the AOI, and there is no aggregate layer yet.
+  if (kind !== 'tracks') return [];
+  const tracks = manifest.layers.filter((layer) => layer.kind === 'tracks');
+  if (tracks.length === 0) return [];
+  const coarsest = tracks.reduce((best, layer) => (layer.min_zoom < best.min_zoom ? layer : best));
+  return zoom < coarsest.min_zoom ? [coarsest] : [];
 }
 
 /** Artifact-second domain of the baked window. The slider may not leave this span. */
