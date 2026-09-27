@@ -67,7 +67,7 @@ DEFAULT_SWEEP_INTERVAL_S = 20.0
 
 #: Length of one collection window. Bounded so the job is unmistakably ephemeral, and short
 #: enough that the runner time this costs stays proportionate to a scheduled data pull.
-DEFAULT_WINDOW_S = 180.0
+DEFAULT_WINDOW_S = 600.0
 
 #: adsb.lol counts requests per *connection*, not per client.
 #:

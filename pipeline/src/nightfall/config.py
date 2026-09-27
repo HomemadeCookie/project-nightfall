@@ -50,12 +50,12 @@ class Settings(BaseSettings):
 
     #: Length of one AIS sampling window. Bounded by construction: there is no persistent
     #: consumer, so this is a sample and everything downstream treats it as one.
-    ais_window_s: float = Field(default=180.0, gt=0.0, le=1800.0)
+    ais_window_s: float = Field(default=600.0, gt=0.0, le=1800.0)
 
     #: Length of one ADS-B sampling window, and how often the coverage circles are swept
     #: inside it. The sweep cadence is what decides whether consecutive fixes may be joined
     #: into a track at all, so it is configuration rather than a constant.
-    adsb_window_s: float = Field(default=180.0, gt=0.0, le=1800.0)
+    adsb_window_s: float = Field(default=600.0, gt=0.0, le=1800.0)
     adsb_sweep_interval_s: float = Field(default=20.0, gt=0.0, le=600.0)
 
     #: Identifies the pipeline run in provenance fields (invariant 7). Defaults to the Actions

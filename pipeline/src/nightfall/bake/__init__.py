@@ -352,7 +352,7 @@ def bake(
 def _fit_tracks_to_budget(tracks: list[Track]) -> tuple[list[Track], float]:
     """Drop intermediate observed points until the coarsest zoom fits, or fail.
 
-    Thinning is a last resort: a three-minute live window must keep its 20-second fixes. The
+    Thinning is a last resort: a short live window must keep its 20-second fixes. The
     interval only grows. A breach after `MAX_THIN_INTERVAL_S` is a failed bake, not a raised
     budget.
     """

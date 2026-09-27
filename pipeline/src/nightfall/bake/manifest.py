@@ -129,7 +129,7 @@ class Manifest(BaseModel):
     #: design and the interface must not imply otherwise (README § Hard Constraint: Zero Cost).
     sampling_notice: str
     #: What this build actually is. Fixture and archive must not read as a live feed, and a
-    #: live three-minute sample must not read as a multi-year history.
+    #: live ten-minute sample must not read as a multi-year history.
     observation_kind: ObservationKind = "live"
     #: Actual first and last observation in the baked window (UTC). The range control may
     #: not be dragged outside this span.

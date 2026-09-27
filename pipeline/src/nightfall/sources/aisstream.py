@@ -61,7 +61,7 @@ MESSAGE_TYPES = ("PositionReport", "ShipStaticData")
 SUBSCRIBE_DEADLINE_S = 3.0
 CONFIRMATION_TIMEOUT_S = 10.0
 
-DEFAULT_WINDOW_S = 180.0
+DEFAULT_WINDOW_S = 600.0
 
 #: AIS `Timestamp` values at or above this are status codes, not seconds of the minute.
 AIS_TIMESTAMP_UNAVAILABLE = 60

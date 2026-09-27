@@ -42,7 +42,7 @@ vars:
   # is the declared sampling window; for ADS-B it is measured per response and this is only a
   # sanity ceiling. See `nightfall.transform` for the provenance of each number.
   adsb_snapshot_horizon_max_s: 60.0
-  ais_window_s: 180.0
+  ais_window_s: 600.0
 
   # adsb.lol reports the response instant in milliseconds; aircraft ages are in seconds.
   adsb_now_units_per_second: 1000.0

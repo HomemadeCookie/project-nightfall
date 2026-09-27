@@ -6,7 +6,7 @@
  * that keeps stale data from passing as current, and it surfaces a stalled pipeline within one
  * cycle (README § Risks, upstream availability).
  *
- * Fixture and archive builds must not read as a live feed. A three-minute sample must not
+ * Fixture and archive builds must not read as a live feed. A ten-minute sample must not
  * read as a multi-year history.
  */
 import { formatAge, formatManila, formatObservedSpan } from '../clock';
