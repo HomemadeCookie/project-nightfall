@@ -1,5 +1,6 @@
 import { AnswerCard } from "../components/AnswerCard";
 import { LineChart } from "../components/Charts";
+import { PageHeader } from "../components/Layout";
 import type { Bundle } from "../data/types";
 import { byQuestion, peso } from "../format";
 import { useLang } from "../i18n";
@@ -10,10 +11,17 @@ export function Fuel({ bundle }: { bundle: Bundle }) {
   const fuel = bundle.fuel;
   return (
     <>
-      <h2>{t("fuel")}</h2>
-      <p className="lede">
-        Will pump prices rise or fall next Tuesday? Estimated from this week's spot-market costs and the peso.
-      </p>
+      <PageHeader
+        eyebrow="Energy"
+        icon="fuel"
+        title={t("fuel")}
+        lede={
+          <>
+            Will pump prices rise or fall next Tuesday? Estimated from this week's spot-market costs and the
+            peso.
+          </>
+        }
+      />
       <div className="grid">
         {answers.map((a) => (
           <AnswerCard

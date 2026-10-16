@@ -1,5 +1,6 @@
 import { AnswerCard } from "../components/AnswerCard";
 import { Chip } from "../components/Chips";
+import { PageHeader } from "../components/Layout";
 import { PhMap } from "../components/PhMap";
 import type { Bundle } from "../data/types";
 import { byQuestion, tone, verdictLabel } from "../format";
@@ -25,11 +26,17 @@ export function Sea({ bundle }: { bundle: Bundle }) {
   });
   return (
     <>
-      <h2>{t("sea")}</h2>
-      <p className="lede">
-        Will RoRo sailings be suspended in the next few days? A rule-based risk from forecast wind, waves and
-        storm distance. Always follow Coast Guard advisories.
-      </p>
+      <PageHeader
+        eyebrow="Shipping"
+        icon="ship"
+        title={t("sea")}
+        lede={
+          <>
+            Will RoRo sailings be suspended in the next few days? A rule-based risk from forecast wind, waves
+            and storm distance. Always follow Coast Guard advisories.
+          </>
+        }
+      />
       <div className="split">
         <PhMap
           geo={bundle.regionsGeo}

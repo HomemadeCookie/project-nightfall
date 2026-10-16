@@ -1,5 +1,6 @@
 import { AnswerCard } from "../components/AnswerCard";
 import { Sparkline } from "../components/Charts";
+import { PageHeader } from "../components/Layout";
 import type { Bundle } from "../data/types";
 import { byQuestion } from "../format";
 import { useLang } from "../i18n";
@@ -9,11 +10,17 @@ export function Ports({ bundle }: { bundle: Bundle }) {
   const answers = byQuestion(bundle.answers, "ports.pressure");
   return (
     <>
-      <h2>{t("ports")}</h2>
-      <p className="lede">
-        Is each key port busier or quieter than normal? Based on vessel calls; wait times appear when AIS data
-        is available.
-      </p>
+      <PageHeader
+        eyebrow="Shipping"
+        icon="port"
+        title={t("ports")}
+        lede={
+          <>
+            Is each key port busier or quieter than normal? Based on vessel calls; wait times appear when AIS
+            data is available.
+          </>
+        }
+      />
       <div className="grid">
         {answers.map((a) => {
           const series = bundle.ports?.[a.scope.port ?? ""]?.series ?? [];

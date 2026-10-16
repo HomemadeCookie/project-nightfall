@@ -1,4 +1,5 @@
 import { Chip } from "../components/Chips";
+import { PageHeader } from "../components/Layout";
 import type { Bundle } from "../data/types";
 import { ageLabel, shortDate } from "../format";
 import { useLang } from "../i18n";
@@ -8,12 +9,16 @@ export function DataPage({ bundle }: { bundle: Bundle }) {
   const m = bundle.manifest;
   return (
     <>
-      <h2>{t("data")}</h2>
-      <p className="lede">
-        {m.mode === "research"
-          ? "This is a research preview. Sources marked “research only” are not cleared for commercial use, so answers built on them are not licensed for resale."
-          : "Commercial mode: only answers whose every input source is cleared are published."}
-      </p>
+      <PageHeader
+        eyebrow="Transparency"
+        icon="info"
+        title={t("data")}
+        lede={
+          m.mode === "research"
+            ? "This is a research preview. Sources marked “research only” are not cleared for commercial use, so answers built on them are not licensed for resale."
+            : "Commercial mode: only answers whose every input source is cleared are published."
+        }
+      />
       <table className="table">
         <thead>
           <tr>

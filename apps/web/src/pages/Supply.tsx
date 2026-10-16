@@ -1,6 +1,7 @@
 import { AnswerCard } from "../components/AnswerCard";
 import { Sparkline } from "../components/Charts";
 import { VerdictChip } from "../components/Chips";
+import { PageHeader } from "../components/Layout";
 import type { Bundle } from "../data/types";
 import { byQuestion, pct, text } from "../format";
 import { useLang } from "../i18n";
@@ -12,7 +13,12 @@ export function Supply({ bundle }: { bundle: Bundle }) {
   const air = byQuestion(bundle.answers, "aircargo.activity");
   return (
     <>
-      <h2>{t("supply")}</h2>
+      <PageHeader
+        eyebrow="Trade flows"
+        icon="globe"
+        title={t("supply")}
+        lede="Is cargo reaching the Philippines at a normal pace, and are the straits it passes through flowing normally?"
+      />
       <h3>Cargo arriving in the Philippines</h3>
       <div className="grid">
         {arrivals.map((a) => (

@@ -1,4 +1,5 @@
 import { StatusChip } from "../components/Chips";
+import { PageHeader } from "../components/Layout";
 import type { Bundle } from "../data/types";
 import { useLang } from "../i18n";
 
@@ -26,12 +27,18 @@ export function Record({ bundle }: { bundle: Bundle }) {
     ?.items;
   return (
     <>
-      <h2>{t("record")}</h2>
-      <p className="lede">
-        Nothing here is presented as more reliable than it is. Each question lists how it is tested and the
-        bar it must clear before it publishes a forecast. Status comes from backtest reports, not from the
-        code.
-      </p>
+      <PageHeader
+        eyebrow="Honesty"
+        icon="check"
+        title={t("record")}
+        lede={
+          <>
+            Nothing here is presented as more reliable than it is. Each question lists how it is tested and
+            the bar it must clear before it publishes a forecast. Status comes from backtest reports, not from
+            the code.
+          </>
+        }
+      />
       <table className="table">
         <thead>
           <tr>

@@ -90,6 +90,13 @@ export function PhMap({
 
   return (
     <svg className="map" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label}>
+      <defs>
+        <pattern id="sea-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+          <path d="M24 0H0V24" className="sea-line" fill="none" />
+        </pattern>
+      </defs>
+      <rect className="sea" width={W} height={H} />
+      <rect width={W} height={H} fill="url(#sea-grid)" />
       {geo.features.map((f) => {
         const g = f.geometry as GeoJSON.MultiPolygon;
         return (
@@ -140,15 +147,21 @@ export function PhMap({
       {ports.map((p) => {
         const c = project([p.lon, p.lat]);
         return c ? (
-          <circle
-            key={p.port_id}
-            className={p.key_port ? "port port-key" : "port"}
-            cx={c[0]}
-            cy={c[1]}
-            r={p.key_port ? 3.5 : 2}
-          >
-            <title>{p.name}</title>
-          </circle>
+          <g key={p.port_id}>
+            <circle
+              className={p.key_port ? "port port-key" : "port"}
+              cx={c[0]}
+              cy={c[1]}
+              r={p.key_port ? 4 : 2.2}
+            >
+              <title>{p.name}</title>
+            </circle>
+            {p.key_port ? (
+              <text className="port-label" x={c[0] + 7} y={c[1] + 3.5}>
+                {p.name.replace(" City", "")}
+              </text>
+            ) : null}
+          </g>
         ) : null;
       })}
       {sites.map((s) => {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Icon } from "./components/Icons";
 import { useBundle } from "./data/api";
 import type { Bundle } from "./data/types";
 import { type StringKey, useLang } from "./i18n";
@@ -96,8 +97,14 @@ export function App() {
       </a>
       <header className="top">
         <div className="top-row">
-          <h1>
-            <a href="#/today">Nightfall PH</a>
+          <h1 className="brand">
+            <a href="#/today">
+              <span className="brand-mark">
+                <Icon name="moon" size={18} />
+              </span>
+              <span className="brand-name">Nightfall PH</span>
+              <span className="brand-tag">Supply-chain signals for the Philippines</span>
+            </a>
           </h1>
           <label className="lang">
             <span className="sr">{t("language")}</span>
@@ -117,7 +124,8 @@ export function App() {
       </header>
       {state.status === "ready" && state.bundle.manifest.banner ? (
         <div className="banner" role="note">
-          {state.bundle.manifest.banner}
+          <Icon name="info" size={16} />
+          <span>{state.bundle.manifest.banner}</span>
         </div>
       ) : null}
       <main id="main">
@@ -133,8 +141,13 @@ export function App() {
         {state.status === "ready" ? <Page route={route} bundle={state.bundle} /> : null}
       </main>
       <footer className="foot">
-        Free public data, no tracking. Not financial or safety advice; follow PAGASA and Coast Guard
-        bulletins.
+        <span className="brand-mark small">
+          <Icon name="moon" size={14} />
+        </span>
+        <span>
+          Free public data, no tracking. Not financial or safety advice; follow PAGASA and Coast Guard
+          bulletins. <a href="#/data">Sources and licences</a>
+        </span>
       </footer>
     </>
   );

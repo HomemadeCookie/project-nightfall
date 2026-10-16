@@ -113,7 +113,8 @@ describe("App", () => {
       "answers/index.json": answers.filter((a) => a.question_id === "fuel.next_week"),
     });
     renderApp();
-    await screen.findAllByText("English text for fuel.next_week");
+    expect(await screen.findByText("Diesel")).toBeInTheDocument(); // fuel shows as a stat tile on Today
+    expect(screen.getByText("+₱2.80/L")).toBeInTheDocument();
     expect(screen.queryByText(/Research preview/)).toBeNull();
     for (const hash of [
       "#/today",

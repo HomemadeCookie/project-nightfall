@@ -1,5 +1,6 @@
 import { AnswerCard } from "../components/AnswerCard";
 import { Sparkline } from "../components/Charts";
+import { PageHeader } from "../components/Layout";
 import type { Bundle } from "../data/types";
 import { byQuestion, pct, peso } from "../format";
 import { useLang } from "../i18n";
@@ -9,12 +10,18 @@ export function Prices({ bundle }: { bundle: Bundle }) {
   const answers = byQuestion(bundle.answers, "staples.price_direction");
   return (
     <>
-      <h2>{t("prices")}</h2>
-      <p className="lede">
-        Weekly average retail prices in Metro Manila markets (DA Bantay Presyo). A forecast appears only for
-        items where the model has beaten a simple trend in backtests; otherwise you see the price and the
-        recent change.
-      </p>
+      <PageHeader
+        eyebrow="Metro Manila markets"
+        icon="chart"
+        title={t("prices")}
+        lede={
+          <>
+            Weekly average retail prices in Metro Manila markets (DA Bantay Presyo). A forecast appears only
+            for items where the model has beaten a simple trend in backtests; otherwise you see the price and
+            the recent change.
+          </>
+        }
+      />
       <div className="grid">
         {answers.map((a) => {
           const item = bundle.prices?.[a.scope.item ?? ""];

@@ -1,4 +1,5 @@
 import { VerdictChip } from "../components/Chips";
+import { PageHeader } from "../components/Layout";
 import { PhMap } from "../components/PhMap";
 import type { Bundle } from "../data/types";
 import { byQuestion, text, tone } from "../format";
@@ -19,11 +20,17 @@ export function Storms({ bundle }: { bundle: Bundle }) {
   });
   return (
     <>
-      <h2>{t("storms")}</h2>
-      <p className="lede">
-        Tracked tropical cyclones (JTWC via GDACS) and how close they come to example sites. Bring your own
-        sites with the CLI.
-      </p>
+      <PageHeader
+        eyebrow="Hazards"
+        icon="storm"
+        title={t("storms")}
+        lede={
+          <>
+            Tracked tropical cyclones (JTWC via GDACS) and how close they come to example sites. Bring your
+            own sites with the CLI.
+          </>
+        }
+      />
       <div className="split">
         <PhMap
           geo={bundle.regionsGeo}
