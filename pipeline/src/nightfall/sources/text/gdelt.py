@@ -30,8 +30,8 @@ class Gdelt(Source):
     cadence = "hourly"
     attribution = "GDELT Project (headlines and links only)"
 
-    def __init__(self, http):
-        super().__init__(http)
+    def __init__(self, http, **kw):
+        super().__init__(http, **kw)
         http._min_interval["api.gdeltproject.org"] = 5.5
 
     def fetch(self, now: datetime) -> Iterator[Envelope]:

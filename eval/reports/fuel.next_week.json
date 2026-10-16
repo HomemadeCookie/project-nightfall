@@ -1,0 +1,7 @@
+{
+  "generated_at": "2026-10-16T08:48:44Z",
+  "n_observations": 0,
+  "question_id": "fuel.next_week",
+  "status": "unvalidated",
+  "summary": "0 official adjustments recorded; at least 8 are needed to evaluate. The collector appends to eval/ground_truth/fuel_adjustments.csv."
+}

@@ -60,6 +60,7 @@ class WorldBankPinkSheet(Source):
     name = "worldbank"
     license = [License.ATTRIBUTION]
     cadence = "weekly"
+    snapshot = True
     attribution = "World Bank Commodity Price Data (The Pink Sheet), CC BY 4.0"
 
     def fetch(self, now: datetime) -> Iterator[Envelope]:

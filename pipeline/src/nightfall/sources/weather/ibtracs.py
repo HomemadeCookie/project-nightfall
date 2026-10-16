@@ -64,6 +64,7 @@ class Ibtracs(Source):
     name = "ibtracs"
     license = [License.PUBLIC_DOMAIN]
     cadence = "weekly"
+    snapshot = True
     attribution = "NOAA NCEI IBTrACS v04r01"
 
     def fetch(self, now: datetime) -> Iterator[Envelope]:

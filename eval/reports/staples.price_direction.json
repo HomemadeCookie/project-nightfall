@@ -1,0 +1,81 @@
+{
+  "generated_at": "2026-10-16T08:48:44Z",
+  "items": {
+    "chicken_whole": {
+      "n_origins": 3,
+      "reason": "too few origins or classes",
+      "ship": false
+    },
+    "cooking_oil_coconut_1l": {
+      "n_origins": 3,
+      "reason": "too few origins or classes",
+      "ship": false
+    },
+    "cooking_oil_palm_1l": {
+      "n_origins": 3,
+      "reason": "too few origins or classes",
+      "ship": false
+    },
+    "egg_white_medium": {
+      "reason": "only 51 weeks of history",
+      "ship": false
+    },
+    "galunggong_local": {
+      "reason": "only 27 weeks of history",
+      "ship": false
+    },
+    "garlic_local": {
+      "reason": "only 27 weeks of history",
+      "ship": false
+    },
+    "pork_liempo_local": {
+      "reason": "only 27 weeks of history",
+      "ship": false
+    },
+    "red_onion_local": {
+      "reason": "only 27 weeks of history",
+      "ship": false
+    },
+    "rice_imported_wellmilled": {
+      "n_origins": 3,
+      "reason": "too few origins or classes",
+      "ship": false
+    },
+    "rice_premium": {
+      "reason": "only 35 weeks of history",
+      "ship": false
+    },
+    "rice_regular": {
+      "n_origins": 3,
+      "reason": "too few origins or classes",
+      "ship": false
+    },
+    "rice_wellmilled": {
+      "n_origins": 3,
+      "reason": "too few origins or classes",
+      "ship": false
+    },
+    "salt_iodized": {
+      "reason": "only 27 weeks of history",
+      "ship": false
+    },
+    "sugar_brown": {
+      "n_origins": 3,
+      "reason": "too few origins or classes",
+      "ship": false
+    },
+    "sugar_refined": {
+      "n_origins": 0,
+      "reason": "too few origins or classes",
+      "ship": false
+    },
+    "tomato": {
+      "n_origins": 3,
+      "reason": "too few origins or classes",
+      "ship": false
+    }
+  },
+  "question_id": "staples.price_direction",
+  "status": "unvalidated",
+  "summary": "Model beats persistence and majority-class by >=5 points of balanced accuracy for 0 of 16 items. Only those items publish a forecast."
+}

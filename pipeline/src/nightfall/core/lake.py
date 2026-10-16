@@ -13,6 +13,7 @@ import json
 import os
 import re
 from collections.abc import Iterable
+from datetime import datetime
 from pathlib import Path
 
 import duckdb
@@ -56,10 +57,23 @@ class Lake:
         self.root = Path(root)
 
     # -- raw -----------------------------------------------------------------
-    def write_raw(self, envelopes: Iterable[Envelope]) -> list[Path]:
-        """Write envelopes, one Parquet file per (source, dataset, hour). Idempotent."""
+    def write_raw(self, envelopes: Iterable[Envelope], skip_known: bool = False) -> list[Path]:
+        """Write envelopes, one Parquet file per (source, dataset, hour). Idempotent.
+
+        With ``skip_known``, an envelope whose payload is byte-identical to one already stored for the same
+        source and dataset is dropped. That keeps daily re-downloads of unchanged files (IBTrACS, the
+        World Bank sheet) from piling up.
+        """
         groups: dict[tuple[str, str, str, str], list[Envelope]] = {}
+        seen: dict[tuple[str, str], set[str]] = {}
         for env in envelopes:
+            if skip_known:
+                key = (env.source, env.dataset)
+                if key not in seen:
+                    seen[key] = self.known_hashes(*key)
+                if env.payload_sha256 in seen[key]:
+                    continue
+                seen[key].add(env.payload_sha256)
             day = env.fetched_at.strftime("%Y-%m-%d")
             hour = env.fetched_at.strftime("%H")
             groups.setdefault((_ident(env.source), _ident(env.dataset), day, hour), []).append(env)
@@ -114,6 +128,48 @@ class Lake:
             }
             for f, e, r, pl in rows
         ]
+
+    def known_hashes(self, source: str, dataset: str) -> set[str]:
+        if not self.has_raw(source, dataset):
+            return set()
+        con = duckdb.connect(":memory:")
+        rows = con.execute(
+            f"SELECT DISTINCT payload_sha256 FROM read_parquet({_lit(self.raw_glob(source, dataset))})"
+        ).fetchall()
+        return {r[0] for r in rows}
+
+    # -- fetch log: when each source was last polled, independent of whether data changed ----------
+    def record_fetch(self, source: str, when: datetime, ok: bool = True) -> None:
+        path = self.root / "meta" / "fetch_log.json"
+        log = json.loads(path.read_text()) if path.exists() else {}
+        entry = log.setdefault(source, {})
+        entry["last_attempt"] = when.strftime("%Y-%m-%dT%H:%M:%SZ")
+        if ok:
+            entry["last_success"] = entry["last_attempt"]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(log, indent=1, sort_keys=True))
+        os.replace(tmp, path)
+
+    def fetch_log(self) -> dict[str, dict]:
+        path = self.root / "meta" / "fetch_log.json"
+        return json.loads(path.read_text()) if path.exists() else {}
+
+    def prune_raw(self, source: str, older_than: datetime) -> int:
+        """Delete raw partitions fetched before ``older_than``; returns files removed."""
+        base = self.root / "raw" / f"source={_ident(source)}"
+        cutoff = older_than.strftime("%Y-%m-%d")
+        removed = 0
+        for part in base.glob("dataset=*/date=*"):
+            if part.name[5:] < cutoff:
+                for f in part.rglob("*.parquet"):
+                    f.unlink()
+                    removed += 1
+                for d in sorted(part.rglob("*"), reverse=True):
+                    if d.is_dir():
+                        d.rmdir()
+                part.rmdir()
+        return removed
 
     def known_requests(self, source: str, dataset: str, key: str) -> set[str]:
         """Values of ``request[key]`` already stored, so incremental sources skip them."""

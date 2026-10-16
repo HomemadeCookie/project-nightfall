@@ -37,6 +37,14 @@ def test_every_source_declares_a_licence_and_cadence():
         assert cls.cadence in {"hourly", "daily", "weekly", "stream"}, name
 
 
+def test_every_source_is_constructible_the_way_the_cli_does_it():
+    """The CLI passes lookback_days and known to every source; a bespoke __init__ must accept them."""
+    http, _ = http_for({})
+    for name, cls in all_sources().items():
+        src = cls(http, lookback_days=7, known={"x"})
+        assert src.lookback_days == 7 and src.known == {"x"}, name
+
+
 def test_non_commercial_and_unclear_sources_are_flagged():
     srcs = all_sources()
     assert License.NON_COMMERCIAL in srcs["open_meteo"].license
@@ -258,8 +266,8 @@ def test_da_links_and_incremental_fetch(monkeypatch):
             ".pdf": httpx.Response(200, content=b"%PDF-1.4 not really"),
         }
     )
-    monkeypatch.setattr(da_prices, "pdf_text", lambda content: "extracted text")
+    monkeypatch.setattr(da_prices, "pdf_text", lambda content: "extracted text " * 20)
     envs = list(all_sources()["da_prices"](http, known=known).fetch(NOW))
-    assert [e.request["url"] for e in envs] == [links[1]] and envs[0].payload == {"text": "extracted text"}
+    assert [e.request["url"] for e in envs] == [links[1]] and envs[0].payload == {"text": "extracted text " * 20, "method": "text"}
     pdf_requests = [str(r.url) for r in seen if str(r.url).endswith(".pdf")]
     assert pdf_requests == [links[1]]

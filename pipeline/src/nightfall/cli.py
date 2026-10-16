@@ -31,10 +31,12 @@ def cmd_ingest(args: argparse.Namespace) -> int:
                 inc = getattr(cls, "incremental", None)
                 known = lake.known_requests(cls.name, inc[0], inc[1]) if inc else set()
                 envelopes = list(cls(http, lookback_days=args.lookback_days, known=known).fetch(now))
-                paths = lake.write_raw(envelopes)
+                paths = lake.write_raw(envelopes, skip_known=cls.snapshot)
+                lake.record_fetch(name, now)
                 print(f"ok   {name:<12} {len(envelopes)} envelope(s), {len(paths)} new file(s)")
             except Exception as exc:  # one broken source must not stop the others
                 failures += 1
+                lake.record_fetch(name, now, ok=False)
                 print(f"FAIL {name:<12} {type(exc).__name__}: {exc}", file=sys.stderr)
                 if args.verbose:
                     traceback.print_exc()
@@ -242,6 +244,19 @@ def cmd_events(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_prune(args: argparse.Namespace) -> int:
+    """Drop old raw files from high-volume sources so the lake stays inside free storage limits."""
+    from datetime import timedelta
+
+    from nightfall.sources.registry import all_sources
+
+    lake, cutoff = Lake(lake_root()), utcnow() - timedelta(days=args.keep_days)
+    for name, cls in sorted(all_sources().items()):
+        if cls.cadence in ("hourly", "stream"):
+            print(f"pruned {name:<12}{lake.prune_raw(name, cutoff):>5} files older than {args.keep_days} d")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="nightfall")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -267,6 +282,9 @@ def build_parser() -> argparse.ArgumentParser:
             sp.add_argument("--show", nargs="*", help="print answer text for these question ids")
         if name in ("publish", "build"):
             sp.add_argument("--mode", choices=["research", "commercial"], default="research")
+    pr = sub.add_parser("prune", help="delete old raw files from hourly/stream sources")
+    pr.add_argument("--keep-days", type=int, default=180)
+    pr.set_defaults(func=cmd_prune)
     ev = sub.add_parser("events", help="extract fuel-adjustment and sea-trip events from news")
     ev.add_argument("--as-of")
     ev.add_argument("--append-ground-truth", action="store_true")

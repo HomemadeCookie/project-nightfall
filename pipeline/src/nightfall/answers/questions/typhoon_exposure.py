@@ -72,6 +72,8 @@ def run(ctx: Context, prior=None, sites: list[dict] | None = None) -> list:
                 ),
                 value={
                     "site": site["name"],
+                    "lat": site["lat"],
+                    "lon": site["lon"],
                     "horizon_h": HORIZON_H,
                     "storm": None if worst is None else worst.name,
                     "min_distance_km": None if worst is None else round(worst.min_distance_km),

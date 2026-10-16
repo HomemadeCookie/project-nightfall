@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 import httpx
 import pytest
@@ -195,3 +195,37 @@ def test_sample_polyline_includes_endpoints_and_spacing():
 def test_h3_cell_is_stable():
     assert geo.cell(14.6, 121.0, 7) == geo.cell(14.6, 121.0, 7)
     assert geo.cell(14.6, 121.0, 7) != geo.cell(10.3, 123.9, 7)
+
+
+# -- snapshot dedup, fetch log, pruning --------------------------------------------------------------
+def test_skip_known_drops_identical_payloads_only(lake_dir):
+    lake = Lake(lake_dir)
+    lake.write_raw([env({"big": "file"})])
+    assert (
+        lake.write_raw([env({"big": "file"}, at=datetime(2026, 10, 17, 3, tzinfo=UTC))], skip_known=True)
+        == []
+    )
+    changed = lake.write_raw(
+        [env({"big": "file v2"}, at=datetime(2026, 10, 17, 3, tzinfo=UTC))], skip_known=True
+    )
+    assert len(changed) == 1
+    # without the flag, an identical payload in a new hour is still kept (forecasts legitimately repeat)
+    assert len(lake.write_raw([env({"big": "file"}, at=datetime(2026, 10, 17, 9, tzinfo=UTC))])) == 1
+
+
+def test_fetch_log_records_attempts_and_successes(lake_dir):
+    lake = Lake(lake_dir)
+    lake.record_fetch("eia", NOW)
+    lake.record_fetch("eia", NOW + timedelta(hours=1), ok=False)
+    entry = lake.fetch_log()["eia"]
+    assert entry["last_success"] == "2026-10-16T12:00:00Z" and entry["last_attempt"] == "2026-10-16T13:00:00Z"
+    assert Lake(lake_dir / "other").fetch_log() == {}
+
+
+def test_prune_raw_removes_only_old_partitions(lake_dir):
+    lake = Lake(lake_dir)
+    old = datetime(2026, 1, 1, 5, tzinfo=UTC)
+    lake.write_raw([env({"n": 1}, at=old), env({"n": 2}, at=NOW)])
+    assert lake.prune_raw("eia", datetime(2026, 6, 1, tzinfo=UTC)) == 1
+    assert [r["payload"]["n"] for r in lake.iter_raw("eia", "spot_prices")] == [2]
+    assert not (lake_dir / "raw" / "source=eia" / "dataset=spot_prices" / "date=2026-01-01").exists()

@@ -24,6 +24,7 @@ class Source(ABC):
     needs_secret: ClassVar[str | None] = None  # env var name, if a free key is required
 
     lookback_days: ClassVar[int] = 21
+    snapshot: ClassVar[bool] = False  # whole-file source: skip a fetch whose payload is unchanged
     incremental: ClassVar[tuple[str, str] | None] = None  # (dataset, request key) to skip on re-runs
 
     def __init__(self, http: Http, *, lookback_days: int | None = None, known: set[str] | None = None):

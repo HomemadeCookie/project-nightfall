@@ -304,5 +304,7 @@ def full_lake(root: Path) -> Lake:
     seed_pink(lake)
     seed_storm(lake, lat=11.0, lon=125.0)
     seed_route_forecast(lake)
+    for source in ("eia", "frankfurter", "portwatch", "da_prices", "worldbank", "gdacs", "open_meteo"):
+        lake.record_fetch(source, NOW)
     stage_all(lake)
     return lake

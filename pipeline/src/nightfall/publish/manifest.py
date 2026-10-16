@@ -32,6 +32,7 @@ def _as_date(v) -> date | None:
 
 def source_freshness(lake: Lake, now: datetime) -> list[dict]:
     con = lake.connect()
+    fetch_log = lake.fetch_log()
     out = []
     for name, (table, col, stale_after) in FRESHNESS.items():
         info: dict = {
@@ -46,18 +47,7 @@ def source_freshness(lake: Lake, now: datetime) -> list[dict]:
             info["data_through"] = None if row is None or row[0] is None else _as_date(row[0]).isoformat()
         except duckdb.CatalogException:
             pass
-        raw = [
-            r[0]
-            for r in con.execute(
-                "SELECT table_name FROM information_schema.tables WHERE table_name LIKE ?", [f"raw_{name}__%"]
-            ).fetchall()
-        ]
-        fetched = []
-        for view in raw:
-            r = con.execute(f'SELECT max(fetched_at) FROM "{view}"').fetchone()
-            if r and r[0]:
-                fetched.append(r[0])
-        info["last_fetch"] = max(fetched) if fetched else None
+        info["last_fetch"] = fetch_log.get(name, {}).get("last_success")
         if info["data_through"]:
             age = (now.date() - date.fromisoformat(info["data_through"])).days
             info["age_days"] = age

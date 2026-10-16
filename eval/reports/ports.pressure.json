@@ -1,0 +1,83 @@
+{
+  "generated_at": "2026-10-16T08:48:39Z",
+  "ports": {
+    "BTG": {
+      "first_origin": "2025-10-04",
+      "last_origin": "2026-09-26",
+      "mae_blend4": 6.77,
+      "mae_naive": 7.94,
+      "mean_weekly_calls": 32.2,
+      "model": "blend4",
+      "n_origins": 52,
+      "ship_forecast": true
+    },
+    "CEB": {
+      "first_origin": "2025-10-04",
+      "last_origin": "2026-09-26",
+      "mae_blend4": 5.25,
+      "mae_naive": 6.83,
+      "mean_weekly_calls": 45.8,
+      "model": "blend4",
+      "n_origins": 52,
+      "ship_forecast": true
+    },
+    "CGY": {
+      "first_origin": "2025-10-04",
+      "last_origin": "2026-09-26",
+      "mae_blend4": 3.61,
+      "mae_naive": 4.27,
+      "mean_weekly_calls": 12.2,
+      "model": "blend4",
+      "n_origins": 52,
+      "ship_forecast": true
+    },
+    "DVO": {
+      "first_origin": "2025-10-04",
+      "last_origin": "2026-09-26",
+      "mae_blend4": 4.91,
+      "mae_naive": 5.44,
+      "mean_weekly_calls": 31.2,
+      "model": "blend4",
+      "n_origins": 52,
+      "ship_forecast": true
+    },
+    "GES": {
+      "n_origins": 52,
+      "reason": "too little history or traffic",
+      "ship_forecast": false
+    },
+    "ILO": {
+      "first_origin": "2025-10-04",
+      "last_origin": "2026-09-26",
+      "mae_blend4": 2.75,
+      "mae_naive": 3.21,
+      "mean_weekly_calls": 8.2,
+      "model": "blend4",
+      "n_origins": 52,
+      "ship_forecast": true
+    },
+    "MNL": {
+      "first_origin": "2025-10-04",
+      "last_origin": "2026-09-26",
+      "mae_blend4": 9.25,
+      "mae_naive": 10.79,
+      "mean_weekly_calls": 139.4,
+      "model": "blend4",
+      "n_origins": 52,
+      "ship_forecast": true
+    },
+    "SBM": {
+      "first_origin": "2025-10-04",
+      "last_origin": "2026-09-26",
+      "mae_blend4": 4.47,
+      "mae_naive": 5.98,
+      "mean_weekly_calls": 21.3,
+      "model": "blend4",
+      "n_origins": 52,
+      "ship_forecast": true
+    }
+  },
+  "question_id": "ports.pressure",
+  "status": "experimental",
+  "summary": "Forecast beats 'repeat last week' by >=5% MAE at 7 of 8 key ports."
+}

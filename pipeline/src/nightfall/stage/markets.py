@@ -77,20 +77,36 @@ MONTHS = {
         1,
     )
 }
+_MONTH = "|".join(MONTHS)
 _PERIOD = re.compile(
-    r"period of\s+(?P<m1>[A-Za-z]+)\s+(?P<d1>\d+)\s*(?:-\s*(?:(?P<m2>[A-Za-z]+)\s+)?(?P<d2>\d+))?,?\s*(?P<y>\d{4})"
+    rf"period\s*of\s*(?P<m1>{_MONTH})\s*(?P<d1>\d+)\s*(?:-\s*(?:(?P<m2>{_MONTH})\s*)?(?P<d2>\d+))?\s*,?\s*(?P<y>\d{{4}})",
+    re.I,
 )
-_ROW = re.compile(r"^(?P<item>.+?)\s+(?P<unit>kg|ml|L|pc|g)\s+(?P<price>\d[\d,]*\.\d+|-)\s*$")
+# OCR drops spaces and reads "kg" as "ka"/"kq"/"ko"; text-layer PDFs are clean, so one tolerant pattern serves both.
+_ROW = re.compile(
+    r"^(?P<item>.+?)(?:\s+(?P<unit>kg|ka|kq|ko|ml|L|l|pc|g))?\s*(?P<price>\d[\d,]*[.,]\d{2}|[-\u2014\u2013])\s*$"
+)
+_UNIT = {"ka": "kg", "kq": "kg", "ko": "kg", "l": "L"}
 _CATEGORY = re.compile(r"^[A-Z][A-Z0-9 &/\-\(\)']{3,}$")
+
+
+def _clean_item(item: str) -> str:
+    """OCR reads ( ) as [ ] or { }; normalise so one set of patterns serves text and scanned files."""
+    return item.translate(str.maketrans("[{]}", "(())")).strip()
+
+
+def _unit_from_item(item: str) -> str:
+    low = item.lower()
+    return "L" if "liter" in low or "litre" in low else "ml" if "ml" in low else "kg"
 
 
 def parse_period(text: str) -> tuple[date, date] | None:
     m = _PERIOD.search(text)
-    if not m or m["m1"] not in MONTHS:
+    if not m:
         return None
     y = int(m["y"])
-    m1 = MONTHS[m["m1"]]
-    m2 = MONTHS.get(m["m2"] or "", m1)
+    m1 = MONTHS[m["m1"].capitalize()]
+    m2 = MONTHS[m["m2"].capitalize()] if m["m2"] else m1
     end = date(y, m2, int(m["d2"] or m["d1"]))
     start = date(y - 1 if m1 > m2 else y, m1, int(m["d1"]))
     return start, end
@@ -103,15 +119,29 @@ def parse_weekly_text(text: str) -> tuple[tuple[date, date] | None, list[dict]]:
             continue
         m = _ROW.match(line)
         if m:
-            price = None if m["price"] == "-" else float(m["price"].replace(",", ""))
-            out.append({"category": category, "item": m["item"].strip(), "unit": m["unit"], "price": price})
+            raw = m["price"]
+            price = None if raw in "-\u2014\u2013" else float(raw.replace(",", "." if raw[-3] == "," else ""))
+            item = _clean_item(m["item"])
+            unit = _UNIT.get(m["unit"], m["unit"]) if m["unit"] else _unit_from_item(item)
+            out.append({"category": category, "item": item, "unit": unit, "price": price})
         elif _CATEGORY.match(line) and "COMMODITY" not in line:
             category = line
     return period, out
 
 
+def _drop_misreads(mapped: list[dict], lo: float = 0.4, hi: float = 2.5) -> list[dict]:
+    """Drop prices far from the item's median (a lost decimal point in OCR, say). Staples do not move 2.5x."""
+    by_item: dict[str, list[float]] = {}
+    for r in mapped:
+        by_item.setdefault(r["item_id"], []).append(r["price"])
+    med = {k: sorted(v)[len(v) // 2] for k, v in by_item.items()}
+    return [r for r in mapped if lo * med[r["item_id"]] <= r["price"] <= hi * med[r["item_id"]]]
+
+
 def stage_da_weekly(lake: Lake):
-    items = [(r["item_id"], re.compile(r["match"], re.I)) for r in price_items()]
+    items = [
+        (r["item_id"], re.compile(re.sub(r"(?<!\\) ", r"\\s*", r["match"]), re.I)) for r in price_items()
+    ]
     best: dict[tuple, dict] = {}
     for rec in lake.iter_raw("da_prices", "weekly_ncr"):
         url = rec["request"].get("url", "")

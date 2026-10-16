@@ -157,3 +157,103 @@ def test_staging_is_rerunnable(lake_dir):
 def test_staging_handles_empty_lake(lake_dir):
     counts = stage_all(Lake(lake_dir))
     assert counts["eia_spot"] == 0 and counts["port_daily"] == 0
+
+
+# -- OCR-tolerant parsing (about half of DA's weekly PDFs are scanned images) -------------------------
+OCR_TEXT = "\n".join(
+    [
+        "DepartmentofAgriculture",
+        "FortheperiodofOctober5-11,2026",
+        "LOCALCOMMERCIALRICE",
+        "RegularMilled20-40%branstreak ka 45.09",
+        "Well Milled1-19%bran streak kg 48.42",
+        "OTHER BASIC COMMODITIES",
+        "Salt(lodized) ka 42.90",
+        "Sugar[Refined) kg 81.24",
+        "Cooking Oil(Coconut) 1Liter/bottle 153.91",
+        "Cooking Oil (Palm) 1 Liter/bottle L 101,99",
+        "Basmati kg -",
+    ]
+)
+
+
+def test_ocr_style_text_parses_like_clean_text():
+    period, rows = parse_weekly_text(OCR_TEXT)
+    assert period == (date(2026, 10, 5), date(2026, 10, 11))
+    by = {r["item"]: r for r in rows}
+    assert by["RegularMilled20-40%branstreak"]["unit"] == "kg"  # "ka" is read as kg
+    assert by["Sugar(Refined)"]["price"] == 81.24  # [ ) normalised to ( )
+    coconut = by["Cooking Oil(Coconut) 1Liter/bottle"]
+    assert (
+        coconut["unit"] == "L" and coconut["price"] == 153.91
+    )  # unit letter lost by OCR, inferred from the item
+    assert by["Cooking Oil (Palm) 1 Liter/bottle"]["price"] == 101.99  # decimal comma
+    assert by["Basmati"]["price"] is None
+
+
+def test_ocr_text_maps_to_the_same_items_as_clean_text(lake_dir):
+    lake = Lake(lake_dir)
+    put(
+        lake,
+        "da_prices",
+        "weekly_ncr",
+        {"text": OCR_TEXT, "method": "ocr"},
+        request={"url": "https://x/Weekly-Average-Prices-1.pdf"},
+    )
+    stage_all(lake)
+    got = dict(lake.connect().execute("SELECT item_id, price FROM staging_price_weekly").fetchall())
+    assert got == {
+        "rice_regular": 45.09,
+        "rice_wellmilled": 48.42,
+        "salt_iodized": 42.9,
+        "sugar_refined": 81.24,
+        "cooking_oil_coconut_1l": 153.91,
+        "cooking_oil_palm_1l": 101.99,
+    }
+
+
+def test_misread_decimals_are_dropped_not_published():
+    from nightfall.stage.markets import _drop_misreads
+
+    rows = [{"item_id": "sugar", "price": p} for p in (80.0, 81.0, 82.0, 8100.0, 79.0)]
+    assert sorted(r["price"] for r in _drop_misreads(rows)) == [79.0, 80.0, 81.0, 82.0]
+
+
+def test_ocr_boxes_are_regrouped_into_lines():
+    from nightfall.sources.markets.da_prices import group_lines
+
+    boxes = [
+        (100.0, 300.0, 20.0, "kg"),
+        (101.0, 10.0, 20.0, "Sugar (Refined)"),
+        (99.0, 400.0, 20.0, "81.24"),
+        (140.0, 10.0, 20.0, "Salt"),
+        (141.0, 300.0, 20.0, "kg"),
+    ]
+    assert group_lines(boxes) == ["Sugar (Refined) kg 81.24", "Salt kg"]
+    assert group_lines([]) == []
+
+
+def test_scanned_pdfs_fall_back_to_ocr_and_missing_ocr_is_retried_later(monkeypatch):
+    import httpx
+
+    from nightfall.core.http import Http
+    from nightfall.sources.markets import da_prices
+
+    html = '<a href="https://www.da.gov.ph/wp-content/uploads/2026/10/Weekly-Average-Prices-October-5-11-2026.pdf">'
+    http = Http(
+        transport=httpx.MockTransport(
+            lambda r: httpx.Response(200, text=html, content=b"x" if ".pdf" in str(r.url) else None)
+        ),
+        sleep=lambda s: None,
+    )
+    monkeypatch.setattr(da_prices, "pdf_text", lambda content: "")  # no text layer
+
+    monkeypatch.setattr(da_prices, "ocr_text", lambda content: "scanned text " * 30)
+    (env,) = list(da_prices.DaWeeklyPrices(http).fetch(NOW))
+    assert env.payload["method"] == "ocr" and "scanned text" in env.payload["text"]
+
+    def unavailable(content):
+        raise da_prices.OcrUnavailable("no extra")
+
+    monkeypatch.setattr(da_prices, "ocr_text", unavailable)
+    assert list(da_prices.DaWeeklyPrices(http).fetch(NOW)) == []  # nothing stored, so a later run retries it
