@@ -147,3 +147,24 @@ def test_answers_carry_attribution_for_every_source(baked):
     _, _, result = baked
     for a in result.flat():
         assert a.attributions, f"{a.key} has no attribution"
+
+
+def test_bake_refuses_to_delete_a_directory_it_did_not_create(baked, tmp_path):
+    lake, ctx, result = baked
+    precious = tmp_path / "documents"
+    precious.mkdir()
+    (precious / "thesis.docx").write_text("do not delete")
+    with pytest.raises(RuntimeError, match="refusing to delete"):
+        bake(lake, ctx, result, precious)
+    assert (precious / "thesis.docx").exists()
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    bake(lake, ctx, result, empty)  # an empty directory is fine
+    assert (empty / "manifest.json").exists()
+
+
+def test_manifest_lists_what_exists_so_clients_do_not_probe_for_files(baked, tmp_path):
+    lake, ctx, result = baked
+    m = bake(lake, ctx, result, tmp_path / "dist")
+    assert {"fuel_weekly", "ports_daily", "reference", "storms"} <= set(m["datasets"])
+    assert m["reports"] == []  # tests run with an empty reports directory

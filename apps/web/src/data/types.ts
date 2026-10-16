@@ -39,6 +39,8 @@ export interface Manifest {
   banner: string | null;
   sources: SourceInfo[];
   questions: QuestionInfo[];
+  datasets?: string[];
+  reports?: string[];
   counts: { answers: number; blocked: number; errors: number };
 }
 

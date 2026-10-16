@@ -29,6 +29,23 @@ describe("LineChart", () => {
     expect(screen.getByText(/Not enough data/)).toBeInTheDocument();
   });
 
+  it("shows the year on axes that span most of a year", () => {
+    const wide = [
+      {
+        name: "A",
+        tone: "a" as const,
+        points: [
+          { x: "2025-10-20", y: 1 },
+          { x: "2026-04-16", y: 2 },
+          { x: "2026-10-12", y: 3 },
+        ],
+      },
+    ];
+    const { container } = render(<LineChart label="wide" series={wide} />);
+    expect(container.textContent).toContain("2025");
+    expect(container.textContent).toContain("2026");
+  });
+
   it("drops points with bad dates or values rather than drawing NaN", () => {
     const messy = [
       {
@@ -64,15 +81,25 @@ describe("LineChart", () => {
 
 describe("PhMap", () => {
   it("projects Philippine coordinates inside the viewBox", () => {
-    const p = makeProjection(bundle.regionsGeo as GeoJSON.FeatureCollection);
+    const p = makeProjection();
     const pt = p([121, 14.6]);
     expect(pt).not.toBeNull();
     expect(pt?.[0]).toBeGreaterThan(0);
     expect(pt?.[1]).toBeGreaterThan(0);
   });
 
+  it("places real regions on the canvas, not at its edge (regression: wrong ring winding)", () => {
+    const p = makeProjection();
+    const manila = p([120.98, 14.6]);
+    const davao = p([125.46, 7.19]);
+    expect(manila?.[0]).toBeGreaterThan(20);
+    expect(manila?.[0]).toBeLessThan(300);
+    expect(davao?.[1]).toBeGreaterThan((manila?.[1] ?? 0) + 150); // Davao is far south of Manila
+    expect(davao?.[0]).toBeGreaterThan(manila?.[0] ?? 0); // and east of it
+  });
+
   it("converts kilometres to a positive pixel radius", () => {
-    const p = makeProjection(bundle.regionsGeo as GeoJSON.FeatureCollection);
+    const p = makeProjection();
     const project = (c: [number, number]) => p(c) as [number, number] | null;
     const small = kmToPx(project, 14, 121, 50);
     const big = kmToPx(project, 14, 121, 200);

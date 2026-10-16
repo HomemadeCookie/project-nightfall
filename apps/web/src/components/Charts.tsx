@@ -41,6 +41,7 @@ export function LineChart({
   const [y0, y1] = niceRange(Math.min(...all.map((p) => p.y)), Math.max(...all.map((p) => p.y)));
   const sx = (t: number) => PAD.l + ((t - x0) / (x1 - x0 || 1)) * (W - PAD.l - PAD.r);
   const sy = (v: number) => H - PAD.b - ((v - y0) / (y1 - y0 || 1)) * (H - PAD.t - PAD.b);
+  const longSpan = x1 - x0 > 200 * 864e5; // a year of weeks needs the year to be readable
   const ticks = [0, 1, 2, 3].map((i) => y0 + ((y1 - y0) * i) / 3);
   const first = series[0]?.points ?? [];
   const hv = hover !== null ? first[hover] : undefined;
@@ -82,7 +83,12 @@ export function LineChart({
             y={H - 8}
             textAnchor={i === 0 ? "start" : i === 2 ? "end" : "middle"}
           >
-            {new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}
+            {new Date(t).toLocaleDateString(
+              "en-US",
+              longSpan
+                ? { month: "short", year: "numeric", timeZone: "UTC" }
+                : { month: "short", day: "numeric", timeZone: "UTC" },
+            )}
           </text>
         ))}
         {series.map((s) => (

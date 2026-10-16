@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import html
 import re
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET  # types only; parsing goes through defusedxml
 from collections.abc import Iterator
 from datetime import datetime
 from email.utils import parsedate_to_datetime
+
+from defusedxml import ElementTree as SafeET
 
 from nightfall.core.envelope import Envelope
 from nightfall.core.license import License
@@ -30,7 +32,7 @@ def _text(item: ET.Element, tag: str) -> str:
 
 
 def parse_feed(xml_text: str) -> list[dict]:
-    root = ET.fromstring(xml_text)
+    root = SafeET.fromstring(xml_text)
     items = []
     for item in root.iter("item"):
         published = None

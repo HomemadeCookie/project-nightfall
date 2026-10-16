@@ -15,21 +15,25 @@ async function getJson<T>(path: string, optional = false): Promise<T | null> {
 export async function loadBundle(): Promise<Bundle> {
   const manifest = await getJson<Manifest & { empty?: boolean }>("manifest.json");
   if (!manifest || manifest.empty) throw new Error("No data published yet. Run `nightfall publish` first.");
+  // Older manifests do not list their files; fall back to probing so they still load.
+  const has = (name: string) => manifest.datasets === undefined || manifest.datasets.includes(name);
+  const dataset = <T>(name: string) =>
+    has(name) ? getJson<T>(`data/${name}.json`, true) : Promise.resolve(null);
   const [answers, fuel, ports, chokepoints, prices, storms, reference, regionsGeo] = await Promise.all([
     getJson<BakedAnswer[]>("answers/index.json"),
-    getJson<Bundle["fuel"]>("data/fuel_weekly.json", true),
-    getJson<Bundle["ports"]>("data/ports_daily.json", true),
-    getJson<Bundle["chokepoints"]>("data/chokepoints.json", true),
-    getJson<Bundle["prices"]>("data/prices.json", true),
-    getJson<Bundle["storms"]>("data/storms.json", true),
-    getJson<Bundle["reference"]>("data/reference.json", true),
+    dataset<Bundle["fuel"]>("fuel_weekly"),
+    dataset<Bundle["ports"]>("ports_daily"),
+    dataset<Bundle["chokepoints"]>("chokepoints"),
+    dataset<Bundle["prices"]>("prices"),
+    dataset<Bundle["storms"]>("storms"),
+    dataset<Bundle["reference"]>("reference"),
     getJson<GeoJSON.FeatureCollection>("ph-regions.json", true),
   ]);
   const reports: Record<string, unknown> = {};
   await Promise.all(
-    manifest.questions.map(async (q) => {
-      const r = await getJson<unknown>(`eval/${q.id}.json`, true);
-      if (r) reports[q.id] = r;
+    (manifest.reports ?? manifest.questions.map((q) => q.id)).map(async (id) => {
+      const r = await getJson<unknown>(`eval/${id}.json`, true);
+      if (r) reports[id] = r;
     }),
   );
   return {

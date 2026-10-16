@@ -274,3 +274,17 @@ def test_da_links_and_incremental_fetch(monkeypatch):
     }
     pdf_requests = [str(r.url) for r in seen if str(r.url).endswith(".pdf")]
     assert pdf_requests == [links[1]]
+
+
+def test_rss_parser_rejects_entity_expansion_bombs():
+    import pytest
+    from defusedxml.common import DefusedXmlException
+
+    from nightfall.sources.text.rss import parse_feed
+
+    bomb = (
+        '<?xml version="1.0"?><!DOCTYPE lolz [<!ENTITY a "aaaaaaaaaa"><!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;">]>'
+        "<rss><channel><item><title>&b;</title></item></channel></rss>"
+    )
+    with pytest.raises(DefusedXmlException):
+        parse_feed(bomb)

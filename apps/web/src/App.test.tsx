@@ -107,6 +107,31 @@ describe("App", () => {
     expect(screen.getAllByText(/research use only/).length).toBeGreaterThan(0);
   });
 
+  it("renders every page when most questions are absent (commercial mode)", async () => {
+    mockFetch({
+      "manifest.json": { ...manifest, mode: "commercial", banner: null },
+      "answers/index.json": answers.filter((a) => a.question_id === "fuel.next_week"),
+    });
+    renderApp();
+    await screen.findAllByText("English text for fuel.next_week");
+    expect(screen.queryByText(/Research preview/)).toBeNull();
+    for (const hash of [
+      "#/today",
+      "#/ports",
+      "#/sea",
+      "#/prices",
+      "#/supply",
+      "#/storms",
+      "#/record",
+      "#/data",
+    ]) {
+      window.location.hash = hash;
+      fireEvent(window, new HashChangeEvent("hashchange"));
+      expect((await screen.findAllByRole("heading", { level: 2 })).length).toBeGreaterThan(0);
+    }
+    expect(screen.getByText(/Commercial mode/)).toBeInTheDocument();
+  });
+
   it("shows a clear error when nothing has been published", async () => {
     mockFetch({ "manifest.json": { empty: true } });
     renderApp();

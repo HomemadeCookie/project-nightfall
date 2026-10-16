@@ -33,6 +33,10 @@ export function Storms({ bundle }: { bundle: Bundle }) {
           label="Map of tracked tropical cyclones near the Philippines"
         />
         <div>
+          <p className="meta">
+            The map shows the Philippine area; a storm farther out (for example near Guam) is listed but may
+            be off the edge.
+          </p>
           <h3>{t("tracked")}</h3>
           {bundle.storms?.storms.length ? (
             <ul className="plain">

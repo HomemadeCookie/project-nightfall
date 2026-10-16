@@ -30,6 +30,9 @@ def bake(lake: Lake, ctx: Context, result: RunResult, out: Path, mode: str = "re
     if mode not in ("research", "commercial"):
         raise ValueError(mode)
     if out.exists():
+        # bake() replaces its output wholesale; refuse to delete a directory that is not a previous bake.
+        if any(out.iterdir()) and not (out / "manifest.json").exists():
+            raise RuntimeError(f"{out} is not empty and is not a previous publish; refusing to delete it")
         shutil.rmtree(out)
     out.mkdir(parents=True)
     specs = load_specs()
@@ -94,6 +97,8 @@ def bake(lake: Lake, ctx: Context, result: RunResult, out: Path, mode: str = "re
         ),
         "sources": [{**src, "fresh": fresh.get(src["name"])} for src in license_gate.source_table()],
         "questions": questions,
+        "datasets": sorted(p.stem for p in (out / "data").glob("*.json")),
+        "reports": sorted(reports),
         "counts": {"answers": len(published), "blocked": len(blocked), "errors": len(result.errors)},
     }
     _write(out / "manifest.json", manifest)

@@ -20,13 +20,25 @@ export interface MapRoute {
 const W = 420;
 const H = 620;
 
-export function makeProjection(geo: GeoJSON.FeatureCollection) {
+// Philippines plus the seas around it. Fitting to a fixed box (not the polygons) matters: d3 reads GeoJSON
+// rings as spherical, and geoBoundaries' winding order makes it fit the whole globe instead.
+const PH_BOX: GeoJSON.MultiPoint = {
+  type: "MultiPoint",
+  coordinates: [
+    [116.0, 4.2],
+    [127.2, 4.2],
+    [127.2, 21.6],
+    [116.0, 21.6],
+  ],
+};
+
+export function makeProjection() {
   return geoMercator().fitExtent(
     [
       [6, 6],
       [W - 6, H - 6],
     ],
-    geo,
+    PH_BOX,
   );
 }
 
@@ -58,7 +70,7 @@ export function PhMap({
   sites?: MapSite[];
   label: string;
 }) {
-  const projection = useMemo(() => (geo ? makeProjection(geo) : null), [geo]);
+  const projection = useMemo(() => (geo ? makeProjection() : null), [geo]);
   if (!geo || !projection) return null;
   const project = (p: [number, number]) => projection(p) as [number, number] | null;
   const toPath = (coords: [number, number][]) =>
