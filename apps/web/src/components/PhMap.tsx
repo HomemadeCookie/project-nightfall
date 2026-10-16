@@ -22,7 +22,7 @@ const H = 620;
 
 // Philippines plus the seas around it. Fitting to a fixed box (not the polygons) matters: d3 reads GeoJSON
 // rings as spherical, and geoBoundaries' winding order makes it fit the whole globe instead.
-const PH_BOX: GeoJSON.MultiPoint = {
+export const PH_BOX: GeoJSON.MultiPoint = {
   type: "MultiPoint",
   coordinates: [
     [116.0, 4.2],
@@ -32,13 +32,15 @@ const PH_BOX: GeoJSON.MultiPoint = {
   ],
 };
 
-export function makeProjection() {
+/** Mercator fitted to the Philippines, optionally widened to include extra [lon, lat] points (e.g. a storm). */
+export function makeProjection(width = W, height = H, extra: [number, number][] = []) {
+  const box: GeoJSON.MultiPoint = { type: "MultiPoint", coordinates: [...PH_BOX.coordinates, ...extra] };
   return geoMercator().fitExtent(
     [
       [6, 6],
-      [W - 6, H - 6],
+      [width - 6, height - 6],
     ],
-    PH_BOX,
+    box,
   );
 }
 

@@ -37,6 +37,8 @@ beforeEach(() => {
 describe("routing", () => {
   it("falls back to Today for unknown routes", () => {
     expect(routeFromHash("#/fuel")).toBe("fuel");
+    expect(routeFromHash("#/map")).toBe("map");
+    expect(routeFromHash("#/map")).toBe("map");
     expect(routeFromHash("#/nope")).toBe("today");
     expect(routeFromHash("")).toBe("today");
   });
@@ -86,6 +88,7 @@ describe("App", () => {
       ["#/storms", "Storms"],
       ["#/record", "Track record"],
       ["#/data", "Data & licences"],
+      ["#/map", "Live map"],
     ] as const) {
       window.location.hash = hash;
       fireEvent(window, new HashChangeEvent("hashchange"));
@@ -125,12 +128,15 @@ describe("App", () => {
       "#/storms",
       "#/record",
       "#/data",
+      "#/map",
     ]) {
       window.location.hash = hash;
       fireEvent(window, new HashChangeEvent("hashchange"));
       expect((await screen.findAllByRole("heading", { level: 2 })).length).toBeGreaterThan(0);
     }
-    expect(screen.getByText(/Commercial mode/)).toBeInTheDocument();
+    window.location.hash = "#/data";
+    fireEvent(window, new HashChangeEvent("hashchange"));
+    expect(await screen.findByText(/Commercial mode/)).toBeInTheDocument();
   });
 
   it("shows a clear error when nothing has been published", async () => {
@@ -165,6 +171,8 @@ describe("App", () => {
     expect(screen.getByRole("link", { name: "Skip to content" })).toHaveAttribute("href", "#main");
     expect(screen.getByRole("navigation", { name: "Sections" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
+    const links = screen.getAllByRole("link").filter((a) => a.closest("nav"));
+    expect(links.at(-1)).toHaveTextContent("Live map"); // the compiled map is the last tab
     expect(screen.getByRole("main")).toBeInTheDocument();
   });
 });

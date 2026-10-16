@@ -6,6 +6,7 @@ import { type StringKey, useLang } from "./i18n";
 import { DataPage } from "./pages/DataPage";
 import { Fuel } from "./pages/Fuel";
 import { Home } from "./pages/Home";
+import { LiveMap } from "./pages/LiveMap";
 import { Ports } from "./pages/Ports";
 import { Prices } from "./pages/Prices";
 import { Record } from "./pages/Record";
@@ -23,6 +24,7 @@ export const ROUTES: { path: string; label: StringKey }[] = [
   { path: "storms", label: "storms" },
   { path: "record", label: "record" },
   { path: "data", label: "data" },
+  { path: "map", label: "map" },
 ];
 
 export function routeFromHash(hash: string): string {
@@ -80,6 +82,8 @@ function Page({ route, bundle }: { route: string; bundle: Bundle }) {
       return <Record bundle={bundle} />;
     case "data":
       return <DataPage bundle={bundle} />;
+    case "map":
+      return <LiveMap bundle={bundle} />;
     default:
       return <Home bundle={bundle} region={region} setRegion={setRegion} />;
   }

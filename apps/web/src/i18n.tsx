@@ -12,6 +12,7 @@ const STRINGS = {
   storms: { en: "Storms", fil: "Bagyo" },
   record: { en: "Track record", fil: "Rekord" },
   data: { en: "Data & licences", fil: "Datos at lisensya" },
+  map: { en: "Live map", fil: "Mapa" },
   region: { en: "Your region", fil: "Inyong rehiyon" },
   stockUp: { en: "Should I stock up this week?", fil: "Dapat ba akong mag-imbak ngayong linggo?" },
   confidence: { en: "Confidence", fil: "Tiwala" },
