@@ -12,8 +12,14 @@ from nightfall.core.context import Context
 from nightfall.core.contracts import Answer, Evidence, LocalizedText
 from nightfall.indicators.storms import worst_exposure
 
+USES = (
+    "ferry.suspension",
+    "ports.pressure",
+    "fuel.next_week",
+    "staples.price_direction",
+)  # lineage comes from these
 QUESTION_ID, VERSION = "retail.stock_up", 1
-SOURCES = ["da_prices", "eia", "frankfurter", "gdacs", "open_meteo", "portwatch"]
+
 
 ITEMS = {  # item group -> (English, Filipino)
     "rice": ("Rice", "Bigas"),
@@ -204,7 +210,7 @@ def run(ctx: Context, prior: dict[str, list[Answer]] | None = None) -> list:
                 scope={"region": code},
                 verdict=overall,
                 text=LocalizedText(en=en, fil=fil),
-                sources=SOURCES,
+                sources=sorted({src for k in USES for a in prior.get(k, []) for src in a.sources}),
                 confidence="low",
                 coverage=coverage,
                 model=model_info(

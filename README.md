@@ -76,7 +76,8 @@ infra/        lake persistence + health-check scripts used by the workflows
 | EIA, Frankfurter (ECB) | fuel cost proxy, USD/PHP | no (EIA `DEMO_KEY`) | yes |
 | DA Bantay Presyo | NCR weekly retail prices (text PDFs + OCR for scanned ones) | no | needs DA approval |
 | GDACS / JTWC, IBTrACS | storm tracks, history | no | unclear / yes |
-| Open-Meteo | wind and waves along ferry corridors | no | **no** (swap before charging) |
+| NOAA GFS + GFS-Wave | wind and waves along ferry corridors (preferred) | no | yes (public domain) |
+| Open-Meteo | same, fallback only | no | **no** |
 | World Bank Pink Sheet | world commodity prices | no | yes |
 | adsb.lol | freighter traffic near airports | no | yes (ODbL) |
 | AISStream (optional) | berth wait times | free key | unclear |

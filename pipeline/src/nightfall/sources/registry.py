@@ -30,4 +30,4 @@ def _load() -> None:
     from nightfall.sources.markets import da_prices, eia, frankfurter, worldbank  # noqa: F401
     from nightfall.sources.ships import aisstream, portwatch  # noqa: F401
     from nightfall.sources.text import gdelt, rss  # noqa: F401
-    from nightfall.sources.weather import gdacs, ibtracs, open_meteo  # noqa: F401
+    from nightfall.sources.weather import gdacs, ibtracs, noaa_gfs, open_meteo  # noqa: F401

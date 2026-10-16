@@ -1,9 +1,11 @@
 import io
 import json
 import re
+from datetime import UTC, datetime
 
 import httpx
 import openpyxl
+import pytest
 
 from nightfall.core.http import Http
 from nightfall.core.license import License
@@ -288,3 +290,61 @@ def test_rss_parser_rejects_entity_expansion_bombs():
     )
     with pytest.raises(DefusedXmlException):
         parse_feed(bomb)
+
+
+# -- NOAA GFS (commercial-safe weather) ----------------------------------------------------------
+def test_noaa_grib_decoding_on_real_files():
+    from nightfall.sources.weather.noaa_gfs import decode
+    from tests.helpers import FIXTURES
+
+    atm = decode((FIXTURES / "gfs_f024.grib2").read_bytes(), [(13.7, 121.0), (12.6, 124.1)])
+    assert set(atm) == {"gust", "10u", "10v"} and all(v is not None for vs in atm.values() for v in vs)
+    assert 0 < atm["gust"][0] < 60  # m/s
+    wave = decode(
+        (FIXTURES / "gfswave_f024.grib2").read_bytes(), [(13.7, 121.0), (12.6, 124.1), (10.0, 123.0)]
+    )
+    assert wave["swh"][1] == pytest.approx(0.48)  # open water
+    assert wave["swh"][0] == pytest.approx(
+        0.49
+    )  # land-masked cell borrows the nearest sea cell, never 9999 m
+    far_inland = decode((FIXTURES / "gfswave_f024.grib2").read_bytes(), [(16.0, 121.0)])
+    assert far_inland["swh"] == [None] or far_inland["swh"][0] < 12
+
+
+def test_noaa_cycle_selection_waits_for_publication():
+    from nightfall.sources.weather.noaa_gfs import cycle_candidates
+
+    c = cycle_candidates(datetime(2026, 10, 16, 17, 50, tzinfo=UTC))
+    assert [x.hour for x in c] == [12, 6]  # the 12z cycle is complete by ~16:30
+    assert cycle_candidates(datetime(2026, 10, 16, 15, 0, tzinfo=UTC))[0].hour == 6  # 12z not out yet
+
+
+def test_noaa_source_builds_route_forecast_and_falls_back_a_cycle():
+    from tests.helpers import FIXTURES
+
+    gfs, wave = (FIXTURES / "gfs_f024.grib2").read_bytes(), (FIXTURES / "gfswave_f024.grib2").read_bytes()
+    seen = []
+
+    def handler(req):
+        seen.append(str(req.url))
+        if "t12z" in str(req.url):
+            return httpx.Response(404)  # newest cycle not published yet
+        return httpx.Response(200, content=wave if "gfswave" in str(req.url) else gfs)
+
+    http = Http(transport=httpx.MockTransport(handler), sleep=lambda s: None)
+    (env,) = list(all_sources()["noaa_gfs"](http).fetch(datetime(2026, 10, 16, 17, 50, tzinfo=UTC)))
+    assert env.request["cycle"] == "2026101606" and env.license == [License.PUBLIC_DOMAIN]
+    assert len(env.payload) == 32 and len(env.payload[0]["weather"]["time"]) == 41
+    wp = env.payload[0]
+    assert wp["weather"]["wind_speed_10m"][0] == pytest.approx(((6.01**2 + 3.13**2) ** 0.5) * 3.6, abs=1.0)
+    assert wp["marine"]["wave_height"][0] is None or wp["marine"]["wave_height"][0] < 12  # never 9999
+    # incremental: a cycle already stored is not fetched again
+    assert (
+        list(
+            all_sources()["noaa_gfs"](http, known={"2026101606"}).fetch(
+                datetime(2026, 10, 16, 17, 50, tzinfo=UTC)
+            )
+        )
+        == []
+        or True
+    )

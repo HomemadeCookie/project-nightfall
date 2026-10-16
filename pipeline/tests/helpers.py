@@ -265,6 +265,7 @@ def seed_storm(
 def seed_route_forecast(
     lake: Lake,
     *,
+    source: str = "open_meteo",
     at: datetime = NOW,
     wave: float = 0.5,
     wind: float = 15.0,
@@ -291,7 +292,7 @@ def seed_route_forecast(
                 "marine": {"time": times, "wave_height": [wave] * len(times)},
             }
         )
-    put(lake, "open_meteo", "route_forecast", recs, at=at)
+    put(lake, source, "route_forecast", recs, at=at)
 
 
 def full_lake(root: Path) -> Lake:

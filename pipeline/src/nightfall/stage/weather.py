@@ -133,25 +133,28 @@ def _r34(r: dict) -> float | None:
 
 def stage_route_forecast(lake: Lake):
     rows = []
-    for rec in lake.iter_raw("open_meteo", "route_forecast"):
-        issued = rec["fetched_at"]
-        for wp in rec["payload"]:
-            w, m = wp["weather"], wp["marine"]
-            wave = dict(zip(m["time"], m["wave_height"], strict=False))
-            for i, t in enumerate(w["time"]):
-                rows.append(
-                    {
-                        "waypoint_id": wp["waypoint_id"],
-                        "route_id": wp["waypoint_id"].split("#")[0],
-                        "issued_at": issued,
-                        "valid_time": datetime.fromisoformat(t).replace(tzinfo=UTC),
-                        "wind_kmh": num(w["wind_speed_10m"][i]),
-                        "gust_kmh": num(w["wind_gusts_10m"][i]),
-                        "precip_mm": num(w["precipitation"][i]),
-                        "wave_m": num(wave.get(t)),
-                    }
-                )
+    for provider in ("open_meteo", "noaa_gfs"):
+        for rec in lake.iter_raw(provider, "route_forecast"):
+            issued = rec["fetched_at"]
+            for wp in rec["payload"]:
+                w, m = wp["weather"], wp["marine"]
+                wave = dict(zip(m["time"], m["wave_height"], strict=False))
+                for i, t in enumerate(w["time"]):
+                    rows.append(
+                        {
+                            "provider": provider,
+                            "waypoint_id": wp["waypoint_id"],
+                            "route_id": wp["waypoint_id"].split("#")[0],
+                            "issued_at": issued,
+                            "valid_time": datetime.fromisoformat(t).replace(tzinfo=UTC),
+                            "wind_kmh": num(w["wind_speed_10m"][i]),
+                            "gust_kmh": num(w["wind_gusts_10m"][i]),
+                            "precip_mm": num(w["precipitation"][i]),
+                            "wave_m": num(wave.get(t)),
+                        }
+                    )
     cols = {
+        "provider": "str",
         "waypoint_id": "str",
         "route_id": "str",
         "issued_at": "ts",

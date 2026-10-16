@@ -15,7 +15,7 @@ from nightfall.indicators.route_weather import route_weather
 from nightfall.indicators.storms import current_tracks, exposure
 
 QUESTION_ID, VERSION = "ferry.suspension", 1
-SOURCES = ["open_meteo", "gdacs"]
+SOURCES = ["gdacs"]  # plus whichever weather provider fed the answer
 HORIZONS = (24, 72, 120)
 LEVELS = ["low", "watch", "likely"]
 
@@ -40,9 +40,12 @@ def run(ctx: Context, prior=None) -> list:
         targets = route["line"]
         per_h: dict[str, dict] = {}
         have_weather = False
+        providers: set[str] = set()
         for h in HORIZONS:
             rw = route_weather(ctx, route["route_id"], h)
             have_weather = have_weather or rw is not None
+            if rw is not None:
+                providers.add(rw.provider)
             exps = [exposure(t, targets, ctx.as_of, h) for t in tracks]
             exps = [e for e in exps if e.min_distance_km != float("inf")]
             worst = min(exps, key=lambda e: (-e.hours_inside, e.min_distance_km)) if exps else None
@@ -100,7 +103,7 @@ def run(ctx: Context, prior=None) -> list:
                 scope={"ferry_route": route["route_id"]},
                 verdict=verdict,
                 text=LocalizedText(en=en, fil=fil),
-                sources=SOURCES,
+                sources=SOURCES + sorted(providers),
                 confidence=conf,
                 coverage=coverage,
                 model=model_info(
@@ -110,7 +113,12 @@ def run(ctx: Context, prior=None) -> list:
                     "unvalidated",
                     "Ordinal ladder over forecast wind, gust, wave and storm proximity at corridor waypoints.",
                 ),
-                value={"route": name, "horizons": per_h, "serves": route["serves_regions"].split(";")},
+                value={
+                    "route": name,
+                    "horizons": per_h,
+                    "weather_provider": sorted(providers)[0] if providers else None,
+                    "serves": route["serves_regions"].split(";"),
+                },
                 drivers=drivers,
                 evidence=[
                     Evidence(kind="forecast", label="Peak wave next 72 h (m)", value=near["peak_wave_m"]),

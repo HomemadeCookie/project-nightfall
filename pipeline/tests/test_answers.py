@@ -395,3 +395,35 @@ def test_fuel_alone_never_turns_the_advice_into_stock_up(lake_dir):
     assert a.verdict == "normal"  # ...but fuel is only a note
     assert "nothing unusual" in a.text.en and "Fuel:" in a.text.en and "Gasolina:" in a.text.fil
     assert next(i for i in a.value["items"] if i["item"] == "fuel")["verdict"] == "stock_up"
+
+
+def test_stock_up_lineage_is_what_its_inputs_actually_used(lake_dir):
+    from tests.helpers import seed_route_forecast
+
+    def noaa(l):
+        seed_route_forecast(l, source="noaa_gfs")
+
+    c, r = build_prior(lake_dir, lambda l: seed_fuel(l), seed_ports, noaa)
+    ferry = r.answers["ferry.suspension"][0]
+    assert "noaa_gfs" in ferry.sources and "open_meteo" not in ferry.sources
+    assert ferry.value["weather_provider"] == "noaa_gfs"
+    a = region(r, "NCR")
+    assert "noaa_gfs" in a.sources and "open_meteo" not in a.sources
+    assert {"eia", "portwatch"} <= set(a.sources)
+
+
+def test_fresh_noaa_beats_open_meteo_but_stale_noaa_does_not(lake_dir):
+    from tests.helpers import seed_route_forecast
+
+    def seeds(l):
+        seed_route_forecast(l, source="open_meteo", wave=1.0, at=NOW)
+        seed_route_forecast(l, source="noaa_gfs", wave=3.0, at=NOW - timedelta(hours=5))
+
+    c = ctx_with(lake_dir, seeds)
+    from nightfall.indicators.route_weather import route_weather
+
+    assert route_weather(c, "matnog-allen", 72).provider == "noaa_gfs"
+    stale = c.at(
+        NOW + timedelta(hours=40)
+    )  # NOAA is now >18 h old; Open-Meteo is 40 h old too: newest of both
+    assert route_weather(stale, "matnog-allen", 24) is not None

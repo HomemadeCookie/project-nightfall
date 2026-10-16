@@ -13,7 +13,7 @@
 > | `staples.import_pipeline` (next 30 days) | `staples.arrivals` (last 28 days by vessel class) | forward-looking needs AIS voyages |
 > | `ferry.suspension` as probabilities | ordinal `low / watch / likely` (ADR 0004) | no labelled suspensions to calibrate against |
 > | dbt-duckdb staging | Python staging (ADR 0007) | the hard parts are not SQL |
-> | Open data weather (ECMWF/NOAA) | Open-Meteo, flagged non-commercial (ADR 0003) | keyless and fast; GRIB adapter is on the roadmap |
+> | Open data weather (ECMWF/NOAA) | NOAA GFS/GFS-Wave preferred, Open-Meteo fallback (ADR 0003) | commercial-safe path is live |
 > | DA prices as text | text plus OCR for scanned PDFs (ADR 0005) | 98 of 161 files are images |
 > | Cloudflare R2 / Pages | GitHub Release asset / GitHub Pages (ADR 0001) | no account or token needed |
 > | Messenger bot | Telegram bot | Messenger needs Meta business verification |

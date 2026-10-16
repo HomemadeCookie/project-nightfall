@@ -7,6 +7,9 @@ from datetime import datetime, timedelta
 
 from nightfall.core.context import Context
 
+PREFERRED = ("noaa_gfs", "open_meteo")  # commercial-safe first
+MAX_ISSUE_AGE = timedelta(hours=18)  # GFS cycles are 6-hourly and arrive ~4.5 h late
+
 
 @dataclass(frozen=True)
 class RouteWeather:
@@ -16,25 +19,44 @@ class RouteWeather:
     peak_wind_kmh: float
     peak_gust_kmh: float
     peak_wave_m: float
-    hours_wind_over_39: int  # hours at or above tropical-storm-force-equivalent sustained wind
+    hours_wind_over_39: int  # forecast steps at or above tropical-storm-force-equivalent sustained wind
+    provider: str = "open_meteo"
+
+
+def _issue(ctx: Context, provider: str) -> datetime | None:
+    rows = ctx.rows("route_forecast", "provider = ?", [provider], order="issued_at DESC")
+    return rows[0]["issued_at"] if rows else None
+
+
+def pick_provider(ctx: Context) -> tuple[str, datetime] | None:
+    """First provider with a fresh-enough forecast, in order of licence safety."""
+    for provider in PREFERRED:
+        issue = _issue(ctx, provider)
+        if issue is not None and ctx.as_of - issue <= MAX_ISSUE_AGE:
+            return provider, issue
+    for provider in PREFERRED:  # nothing fresh: fall back to the newest of whatever exists
+        issue = _issue(ctx, provider)
+        if issue is not None:
+            return provider, issue
+    return None
 
 
 def route_weather(ctx: Context, route_id: str, horizon_h: int) -> RouteWeather | None:
-    issue = ctx.latest_issue("route_forecast")
-    if issue is None:
+    picked = pick_provider(ctx)
+    if picked is None:
         return None
+    provider, issue = picked
     end = ctx.as_of + timedelta(hours=horizon_h)
     rows = ctx.rows(
         "route_forecast",
-        "route_id = ? AND issued_at = ? AND valid_time >= ? AND valid_time <= ?",
-        [route_id, issue, ctx.as_of, end],
+        "provider = ? AND route_id = ? AND issued_at = ? AND valid_time >= ? AND valid_time <= ?",
+        [provider, route_id, issue, ctx.as_of, end],
     )
     if not rows:
         return None
-    hours_by_time: dict[datetime, float] = {}
+    by_time: dict[datetime, float] = {}
     for r in rows:
-        w = r["wind_kmh"] or 0.0
-        hours_by_time[r["valid_time"]] = max(hours_by_time.get(r["valid_time"], 0.0), w)
+        by_time[r["valid_time"]] = max(by_time.get(r["valid_time"], 0.0), r["wind_kmh"] or 0.0)
     return RouteWeather(
         route_id,
         issue,
@@ -42,5 +64,6 @@ def route_weather(ctx: Context, route_id: str, horizon_h: int) -> RouteWeather |
         max((r["wind_kmh"] or 0.0) for r in rows),
         max((r["gust_kmh"] or 0.0) for r in rows),
         max((r["wave_m"] or 0.0) for r in rows),
-        sum(1 for w in hours_by_time.values() if w >= 39.0),
+        sum(1 for w in by_time.values() if w >= 39.0),
+        provider,
     )
