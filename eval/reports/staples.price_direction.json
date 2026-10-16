@@ -1,23 +1,40 @@
 {
-  "generated_at": "2026-10-16T08:48:44Z",
+  "generated_at": "2026-10-16T10:42:10Z",
   "items": {
     "chicken_whole": {
-      "n_origins": 3,
-      "reason": "too few origins or classes",
+      "acc_model": 0.375,
+      "acc_persistence": 0.281,
+      "ba_majority": 0.333,
+      "ba_model": 0.383,
+      "ba_persistence": 0.278,
+      "class_balance": {
+        "down": 10,
+        "flat": 12,
+        "up": 10
+      },
+      "n_origins": 32,
       "ship": false
     },
     "cooking_oil_coconut_1l": {
-      "n_origins": 3,
-      "reason": "too few origins or classes",
+      "acc_model": 0.385,
+      "acc_persistence": 0.692,
+      "ba_majority": 0.5,
+      "ba_model": 0.227,
+      "ba_persistence": 0.409,
+      "class_balance": {
+        "down": 4,
+        "flat": 22
+      },
+      "n_origins": 26,
       "ship": false
     },
     "cooking_oil_palm_1l": {
-      "n_origins": 3,
-      "reason": "too few origins or classes",
+      "n_origins": 25,
+      "reason": "only 25 walk-forward origins (need 26)",
       "ship": false
     },
     "egg_white_medium": {
-      "reason": "only 51 weeks of history",
+      "reason": "only 55 weeks of history",
       "ship": false
     },
     "galunggong_local": {
@@ -37,22 +54,48 @@
       "ship": false
     },
     "rice_imported_wellmilled": {
-      "n_origins": 3,
-      "reason": "too few origins or classes",
+      "acc_model": 0.781,
+      "acc_persistence": 0.719,
+      "ba_majority": 0.333,
+      "ba_model": 0.667,
+      "ba_persistence": 0.663,
+      "class_balance": {
+        "down": 4,
+        "flat": 21,
+        "up": 7
+      },
+      "n_origins": 32,
       "ship": false
     },
     "rice_premium": {
-      "reason": "only 35 weeks of history",
+      "reason": "only 41 weeks of history",
       "ship": false
     },
     "rice_regular": {
-      "n_origins": 3,
-      "reason": "too few origins or classes",
+      "acc_model": 0.643,
+      "acc_persistence": 0.679,
+      "ba_majority": 0.5,
+      "ba_model": 0.47,
+      "ba_persistence": 0.553,
+      "class_balance": {
+        "flat": 22,
+        "up": 6
+      },
+      "n_origins": 28,
       "ship": false
     },
     "rice_wellmilled": {
-      "n_origins": 3,
-      "reason": "too few origins or classes",
+      "acc_model": 0.667,
+      "acc_persistence": 0.697,
+      "ba_majority": 0.333,
+      "ba_model": 0.594,
+      "ba_persistence": 0.691,
+      "class_balance": {
+        "down": 4,
+        "flat": 23,
+        "up": 6
+      },
+      "n_origins": 33,
       "ship": false
     },
     "salt_iodized": {
@@ -60,22 +103,31 @@
       "ship": false
     },
     "sugar_brown": {
-      "n_origins": 3,
-      "reason": "too few origins or classes",
+      "n_origins": 28,
+      "reason": "the outcome never changed direction, so there is nothing to score",
       "ship": false
     },
     "sugar_refined": {
       "n_origins": 0,
-      "reason": "too few origins or classes",
+      "reason": "only 0 walk-forward origins (need 26)",
       "ship": false
     },
     "tomato": {
-      "n_origins": 3,
-      "reason": "too few origins or classes",
+      "acc_model": 0.412,
+      "acc_persistence": 0.353,
+      "ba_majority": 0.333,
+      "ba_model": 0.306,
+      "ba_persistence": 0.315,
+      "class_balance": {
+        "down": 12,
+        "flat": 4,
+        "up": 18
+      },
+      "n_origins": 34,
       "ship": false
     }
   },
   "question_id": "staples.price_direction",
   "status": "unvalidated",
-  "summary": "Model beats persistence and majority-class by >=5 points of balanced accuracy for 0 of 16 items. Only those items publish a forecast."
+  "summary": "Model beats persistence and majority-class by >=10 points of balanced accuracy for 0 of 16 items. Only those items publish a forecast."
 }

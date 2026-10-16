@@ -14,7 +14,8 @@ from nightfall.indicators.ports import calls_series, forecast_next_week
 from nightfall.indicators.prices import HORIZON_WEEKS, direction, pct, weekly_prices
 
 MIN_ORIGINS = 26
-SHIP_MARGIN = 0.05
+SHIP_MARGIN = 0.05  # ports: MAE improvement
+PRICE_SHIP_MARGIN = 0.10  # 16 items are tested at once, so ~1 clears a 5-point bar by luck; ask for 10
 
 
 def _eod(d: date) -> datetime:
@@ -74,7 +75,9 @@ def backtest_prices(ctx: Context, weeks: int = 60) -> dict:
         if len(prices) < 60:
             items_out[item_id] = {"ship": False, "reason": f"only {len(prices)} weeks of history"}
             continue
-        first = max(len(prices) - HORIZON_WEEKS - weeks, 52)
+        first = max(
+            len(prices) - HORIZON_WEEKS - weeks, 44
+        )  # 12 weeks of features + 28 training samples + horizon
         actual, model_pred, persist = [], [], []
         for j in range(first, len(prices) - HORIZON_WEEKS):
             pred = predict_at(ctx.at(_eod(prices[j].available_on)), item_id)
@@ -87,13 +90,17 @@ def backtest_prices(ctx: Context, weeks: int = 60) -> dict:
             items_out[item_id] = {
                 "ship": False,
                 "n_origins": len(actual),
-                "reason": "too few origins or classes",
+                "reason": (
+                    f"only {len(actual)} walk-forward origins (need {MIN_ORIGINS})"
+                    if len(actual) < MIN_ORIGINS
+                    else "the outcome never changed direction, so there is nothing to score"
+                ),
             }
             continue
         maj = majority(actual)
         ba_model, ba_persist = balanced_accuracy(actual, model_pred), balanced_accuracy(actual, persist)
         ba_major = balanced_accuracy(actual, [maj] * len(actual))
-        ship = ba_model >= max(ba_persist, ba_major) + SHIP_MARGIN
+        ship = ba_model >= max(ba_persist, ba_major) + PRICE_SHIP_MARGIN
         items_out[item_id] = {
             "n_origins": len(actual),
             "ba_model": round(ba_model, 3),
@@ -109,7 +116,7 @@ def backtest_prices(ctx: Context, weeks: int = 60) -> dict:
     return {
         "status": status,
         "items": items_out,
-        "summary": f"Model beats persistence and majority-class by >=5 points of balanced accuracy for "
+        "summary": f"Model beats persistence and majority-class by >=10 points of balanced accuracy for "
         f"{len(shipped)} of {len(items_out)} items. Only those items publish a forecast.",
     }
 

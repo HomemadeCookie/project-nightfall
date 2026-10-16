@@ -33,7 +33,7 @@ from nightfall.indicators.prices import (
 
 QUESTION_ID, VERSION = "staples.price_direction", 1
 SOURCES = ["da_prices", "worldbank", "frankfurter", "eia"]
-MIN_TRAIN = 40
+MIN_TRAIN = 28
 CLASSES = ["down", "flat", "up"]
 
 

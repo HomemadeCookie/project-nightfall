@@ -54,7 +54,8 @@ def test_price_backtest_only_ships_items_that_beat_both_baselines(tmp_path):
     for item in out["items"].values():
         if item.get("ship"):
             assert (
-                item["ba_model"] >= max(item["ba_persistence"], item["ba_majority"]) + backtests.SHIP_MARGIN
+                item["ba_model"]
+                >= max(item["ba_persistence"], item["ba_majority"]) + backtests.PRICE_SHIP_MARGIN
             )
     assert (
         out["items"]["egg_white_medium"]["ship"] is False

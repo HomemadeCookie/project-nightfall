@@ -24,7 +24,7 @@ metric:
   primary: balanced_accuracy
   secondary:
   - accuracy
-ship_when: Balanced accuracy >= max(persistence, majority) + 0.05 over >= 26 walk-forward origins; only
+ship_when: Balanced accuracy >= max(persistence, majority) + 0.10 over >= 26 walk-forward origins; only
   passing items publish a forecast.
 min_coverage: 0.5
 outputs:
