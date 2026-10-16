@@ -1,0 +1,48 @@
+name: backtest
+
+# Weekly: extract news events, append fuel adjustments to the ground-truth file, rerun every backtest,
+# and commit the reports. Answer status ("validated", "experimental", ...) comes only from these files.
+on:
+  schedule:
+    - cron: "41 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightfall-lake
+  cancel-in-progress: false
+
+env:
+  NIGHTFALL_LAKE: ${{ github.workspace }}/lake
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: pipeline/uv.lock
+      - run: infra/scripts/lake_pull.sh
+      - name: Stage, extract events, backtest
+        working-directory: pipeline
+        run: |
+          uv sync --locked
+          uv run nightfall stage
+          uv run nightfall events --append-ground-truth
+          uv run nightfall backtest
+      - name: Prune old raw data from hourly sources, then save the lake
+        working-directory: pipeline
+        run: uv run nightfall prune --keep-days 180 && cd .. && infra/scripts/lake_push.sh
+      - name: Commit reports and ground truth
+        run: |
+          git config user.name "nightfall-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add eval/reports eval/ground_truth
+          git diff --cached --quiet || git commit -m "chore(eval): weekly backtest reports"
+          git push

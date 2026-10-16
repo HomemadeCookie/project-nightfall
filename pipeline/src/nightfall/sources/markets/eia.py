@@ -24,7 +24,7 @@ class Eia(Source):
     license = [License.PUBLIC_DOMAIN]
     cadence = "daily"
     attribution = "U.S. Energy Information Administration"
-    lookback_days = 30
+    lookback_days = 21
 
     def fetch(self, now: datetime) -> Iterator[Envelope]:
         start = (now - timedelta(days=self.lookback_days)).strftime("%Y-%m-%d")

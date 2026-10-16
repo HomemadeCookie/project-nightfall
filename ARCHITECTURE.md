@@ -3,6 +3,22 @@
 > Clean-slate design. This document supersedes every other `.md` in the old
 > implementation. It is the spec the new branch is built from.
 
+> **Implementation status.** This is the original product spec. The code in `pipeline/` and `apps/` follows it
+> with the deliberate deviations below; the reasoning is in [`docs/adr/`](docs/adr/) and unbuilt items are in
+> [`docs/roadmap.md`](docs/roadmap.md).
+>
+> | Spec | As built | Why |
+> |---|---|---|
+> | `ports.wait` (hours at anchor) | `ports.pressure` (vessel-call volume vs norm, plus a forecast); wait times appear when AIS is on | free sources give volume, not dwell time |
+> | `staples.import_pipeline` (next 30 days) | `staples.arrivals` (last 28 days by vessel class) | forward-looking needs AIS voyages |
+> | `ferry.suspension` as probabilities | ordinal `low / watch / likely` (ADR 0004) | no labelled suspensions to calibrate against |
+> | dbt-duckdb staging | Python staging (ADR 0007) | the hard parts are not SQL |
+> | Open data weather (ECMWF/NOAA) | Open-Meteo, flagged non-commercial (ADR 0003) | keyless and fast; GRIB adapter is on the roadmap |
+> | DA prices as text | text plus OCR for scanned PDFs (ADR 0005) | 98 of 161 files are images |
+> | Cloudflare R2 / Pages | GitHub Release asset / GitHub Pages (ADR 0001) | no account or token needed |
+> | Messenger bot | Telegram bot | Messenger needs Meta business verification |
+> | `typhoon.asset_exposure` with customer sites in D1 | CLI: `nightfall exposure --sites FILE`; demo sites in the web app | no customers yet |
+
 Nightfall turns free public data (ships, flights, satellites, weather, text,
 prices) into **answers to specific, paid-for business questions about the
 Philippine supply chain**. It serves two kinds of customer: companies that move goods,

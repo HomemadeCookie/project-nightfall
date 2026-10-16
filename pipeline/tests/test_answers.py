@@ -47,7 +47,7 @@ def test_fuel_verdicts(lake_dir, drift, verdict):
     d = answers["diesel"]
     assert d.verdict == verdict and d.confidence == "low" and d.model.status == "unvalidated"
     assert d.value["effective_date"] == "2026-10-20"  # next Tuesday after Fri Oct 16 (Manila)
-    assert d.coverage == 0.8 and d.data_through == "2026-10-15"
+    assert d.coverage == 1.0 and d.data_through == "2026-10-15"  # Mon-Thu all published by Friday
     assert d.sources == ["eia", "frankfurter"] and d.license
     assert "Tuesday" in d.text.en and d.text.fil
 
@@ -303,8 +303,8 @@ def test_fuel_move_below_threshold_is_not_advertised(lake_dir):
 
 def test_stock_up_coverage_reflects_missing_inputs(lake_dir):
     c, r = build_prior(lake_dir, lambda l: seed_fuel(l))
-    # Only fuel has data (0.8 coverage: 4 of 5 trading days); ferry and ports have none.
-    assert region(r, "NCR").coverage == pytest.approx(0.8 / 3, abs=0.01)
+    # Only fuel has data (full coverage); ferry and ports have none.
+    assert region(r, "NCR").coverage == pytest.approx(1 / 3, abs=0.01)
 
 
 # -- aircargo -----------------------------------------------------------------------------------
@@ -383,3 +383,15 @@ def test_low_coverage_answers_are_downgraded(tmp_path, monkeypatch):
     monkeypatch.setattr(ports_pressure, "run", low)
     r = engine.run_all(Context.from_lake(lake, NOW))
     assert {a.verdict for a in r.answers["ports.pressure"]} == {"insufficient_data"}
+
+
+def test_fuel_alone_never_turns_the_advice_into_stock_up(lake_dir):
+    c, r = build_prior(
+        lake_dir, lambda l: seed_fuel(l, drift=0.05), seed_ports, lambda l: seed_route_forecast(l)
+    )
+    fuel = next(a for a in r.answers["fuel.next_week"] if a.scope["product"] == "diesel")
+    assert fuel.value["delta_php_per_l"] > retail_stock_up.MATERIAL_FUEL_PHP  # a big move...
+    a = region(r, "NCR")
+    assert a.verdict == "normal"  # ...but fuel is only a note
+    assert "nothing unusual" in a.text.en and "Fuel:" in a.text.en and "Gasolina:" in a.text.fil
+    assert next(i for i in a.value["items"] if i["item"] == "fuel")["verdict"] == "stock_up"

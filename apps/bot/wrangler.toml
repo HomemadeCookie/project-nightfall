@@ -1,0 +1,21 @@
+# Free tier: Workers (100k requests/day) + KV (100k reads/day, 1k writes/day). No paid features used.
+name = "nightfall-bot"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+[vars]
+# Where the static site (and its answers/*.json) is published.
+SITE_URL = "https://example.github.io/nightfall"
+
+# 07:00 Manila time every day (23:00 UTC the day before): the morning advisory push.
+[triggers]
+crons = ["0 23 * * *"]
+
+# Create with: npx wrangler kv namespace create USERS   then paste the id here.
+[[kv_namespaces]]
+binding = "USERS"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# Secrets (never in this file):
+#   npx wrangler secret put TELEGRAM_TOKEN      (from @BotFather)
+#   npx wrangler secret put WEBHOOK_SECRET      (any random string)

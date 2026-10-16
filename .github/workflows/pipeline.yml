@@ -1,0 +1,99 @@
+name: pipeline
+
+# Hourly: fetch fast-moving sources, rebuild answers, publish the site.
+# 05:xx UTC daily also fetches daily sources; Mondays also fetch weekly sources (with OCR for scanned DA files).
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Publish mode"
+        type: choice
+        options: [research, commercial]
+        default: research
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+  pages: write
+  id-token: write
+
+# One writer to the lake at a time; never cancel a run halfway through a write.
+concurrency:
+  group: nightfall-lake
+  cancel-in-progress: false
+
+env:
+  NIGHTFALL_LAKE: ${{ github.workspace }}/lake
+  NIGHTFALL_DIST: ${{ github.workspace }}/dist
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: pipeline/uv.lock
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Restore the data lake
+        run: infra/scripts/lake_pull.sh
+
+      - name: Fetch hourly sources
+        working-directory: pipeline
+        run: uv sync --locked && uv run nightfall ingest --cadence hourly || true
+
+      - name: Fetch daily sources
+        working-directory: pipeline
+        run: |
+          HOUR=$(date -u +%H)
+          if [ "$HOUR" = "05" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            uv run nightfall ingest --cadence daily || true
+          fi
+
+      - name: Fetch weekly sources
+        working-directory: pipeline
+        run: |
+          HOUR=$(date -u +%H); DOW=$(date -u +%u)
+          if { [ "$HOUR" = "05" ] && [ "$DOW" = "1" ]; } || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            uv run --extra ocr nightfall ingest --cadence weekly || true
+          fi
+
+      - name: Stage, answer, publish
+        working-directory: pipeline
+        run: uv run nightfall build --mode "${{ inputs.mode || 'research' }}"
+
+      - name: Save the data lake
+        run: infra/scripts/lake_push.sh
+
+      - name: Build the site
+        working-directory: apps/web
+        run: npm ci && npm run build
+
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: apps/web/dist
+
+      - name: Health check (opens an issue when data is stale)
+        run: python3 infra/scripts/health.py dist/manifest.json
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

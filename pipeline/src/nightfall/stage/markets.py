@@ -7,6 +7,31 @@ from nightfall.core.lake import Lake
 from nightfall.core.reference import price_items
 from nightfall.stage.common import available_on, make_table, num, parse_date
 
+US_PRODUCTS = ("EPD2DXL0", "EPMRU", "EPCWTI")  # priced in US markets: closed on US holidays
+
+
+def drop_carry_forward(rows: dict[tuple, dict]) -> tuple[dict[tuple, dict], list[date]]:
+    """EIA repeats the previous US price on US holidays. A holiday has a clear signature: every US
+    product is unchanged from its previous observation while Brent, which keeps trading, has moved.
+    Requiring both stops a genuinely flat stretch from being mistaken for a holiday."""
+    days = sorted({d for d, _ in rows})
+    holidays: list[date] = []
+    last: dict[str, float] = {}
+    last_brent: float | None = None
+    for d in days:
+        us = {p: rows[(d, p)]["value"] for p in US_PRODUCTS if (d, p) in rows}
+        brent = rows[(d, "EPCBRENT")]["value"] if (d, "EPCBRENT") in rows else None
+        repeats = bool(us) and all(p in last and last[p] == v for p, v in us.items())
+        if repeats and brent is not None and last_brent is not None and brent != last_brent:
+            holidays.append(d)
+            for p in us:
+                del rows[(d, p)]
+        else:
+            last.update(us)
+        if brent is not None:
+            last_brent = brent
+    return rows, holidays
+
 
 def stage_eia(lake: Lake):
     rows: dict[tuple, dict] = {}
@@ -23,8 +48,15 @@ def stage_eia(lake: Lake):
                 "units": r.get("units"),
                 "available_on": available_on(d, "eia"),
             }
+    rows, holidays = drop_carry_forward(rows)
     cols = {"date": "date", "product": "str", "value": "f", "units": "str", "available_on": "date"}
-    return {"eia_spot": make_table(sorted(rows.values(), key=lambda x: (x["product"], x["date"])), cols)}
+    hcols = {"date": "date", "available_on": "date"}
+    return {
+        "eia_spot": make_table(sorted(rows.values(), key=lambda x: (x["product"], x["date"])), cols),
+        "eia_holidays": make_table(
+            [{"date": d, "available_on": available_on(d, "eia")} for d in holidays], hcols
+        ),
+    }
 
 
 def stage_fx(lake: Lake):

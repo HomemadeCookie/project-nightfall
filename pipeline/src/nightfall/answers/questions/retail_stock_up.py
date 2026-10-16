@@ -161,8 +161,10 @@ def run(ctx: Context, prior: dict[str, list[Answer]] | None = None) -> list:
                     "reasons_fil": sorted({r[2] for r in rs}),
                 }
             )
-        up = [i for i in items_out if i["verdict"] == "stock_up"]
-        wait = [i for i in items_out if i["verdict"] == "wait"]
+        # Fuel rests on an unvalidated proxy, so it is a note beside the advice, never the reason for it.
+        core = [i for i in items_out if i["item"] != "fuel"]
+        up = [i for i in core if i["verdict"] == "stock_up"]
+        wait = [i for i in core if i["verdict"] == "wait"]
         overall = "stock_up" if up else "wait" if wait else "normal"
         if up:
             en = (
@@ -189,6 +191,10 @@ def run(ctx: Context, prior: dict[str, list[Answer]] | None = None) -> list:
         else:
             en = f"{region['short']}: nothing unusual this week. Restock as normal."
             fil = f"{region['short']}: walang kakaiba ngayong linggo. Mag-restock gaya ng dati."
+        fuel_item = next(i for i in items_out if i["item"] == "fuel")
+        if fuel_item["verdict"] != "normal" and fuel_item["reasons_en"]:
+            en += f" Fuel: {fuel_item['reasons_en'][0]}"
+            fil += f" Gasolina: {fuel_item['reasons_fil'][0]}"
         coverage = _upstream_coverage(prior, ("ferry.suspension", "ports.pressure", "fuel.next_week"))
         answers.append(
             make_answer(

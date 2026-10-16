@@ -18,6 +18,7 @@ from nightfall.core.lake import Lake
 # table -> (column, kind). kind: "date" compares to as_of.date(); "ts" compares to as_of.
 ASOF_COLUMN: dict[str, tuple[str, str]] = {
     "eia_spot": ("available_on", "date"),
+    "eia_holidays": ("available_on", "date"),
     "fx_usd_php": ("available_on", "date"),
     "pink_sheet": ("available_on", "date"),
     "price_weekly": ("available_on", "date"),

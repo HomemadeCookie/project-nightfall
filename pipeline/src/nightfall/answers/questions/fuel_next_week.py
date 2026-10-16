@@ -23,7 +23,7 @@ def run(ctx: Context, prior=None) -> list:
         if sig is None:
             continue
         stale = staleness_days(ctx, sig.data_through)
-        coverage = 0.0 if stale > 6 else min(sig.current.n_days / 5.0, 1.0)
+        coverage = 0.0 if stale > 6 else min(sig.current.n_days / sig.current.expected_days, 1.0)
         delta = round(sig.delta_php_l * PASS_THROUGH, 2)
         name_en, name_fil = LABEL[product]
         if coverage < 0.5:
@@ -35,7 +35,11 @@ def run(ctx: Context, prior=None) -> list:
             conf = "low"
             amt = f"₱{abs(delta):.2f}/L"
             when_en, when_fil = fmt_date(effective), fmt_date(effective, "fil")
-            partial = "" if sig.current.n_days >= 5 else f" (so far: {sig.current.n_days} of 5 trading days)"
+            partial = (
+                ""
+                if sig.current.n_days >= sig.current.expected_days and sig.current.expected_days >= 4
+                else f" (so far: {sig.current.n_days} of {sig.current.expected_days} trading days)"
+            )
             en = {
                 "up": f"{name_en} looks set to rise by about {amt} on Tuesday {when_en}{partial}.",
                 "down": f"{name_en} looks set to fall by about {amt} on Tuesday {when_en}{partial}.",
@@ -95,6 +99,14 @@ def run(ctx: Context, prior=None) -> list:
                 caveats=[
                     "Uses US NY Harbor spot prices as a stand-in for the Singapore benchmarks DOE uses.",
                     "Not yet validated against official adjustments; treat as a direction, not a price.",
+                    *(
+                        [
+                            f"Ignored an unexplained one-day price step on {', '.join(d.isoformat() for d in sig.jumps)} "
+                            "(typically a seasonal grade switch, not a market move)."
+                        ]
+                        if sig.jumps
+                        else []
+                    ),
                 ],
             )
         )

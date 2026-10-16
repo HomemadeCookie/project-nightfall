@@ -47,7 +47,7 @@ class PortWatch(Source):
     license = [License.UNCLEAR]
     cadence = "daily"
     attribution = "IMF PortWatch (portwatch.imf.org)"
-    lookback_days = 120
+    lookback_days = 28  # data lags ~7 days and is occasionally revised; backfills pass --lookback-days
 
     def _query(self, service: str, where: str, out_fields: str, order: str | None = "ObjectId") -> list[dict]:
         """Paged ArcGIS query returning attribute dicts."""

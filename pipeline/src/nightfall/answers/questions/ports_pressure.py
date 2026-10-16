@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from nightfall.answers.common import key_ports, load_report, make_answer, model_info, staleness_days
+from nightfall.answers.common import fmt_date, key_ports, load_report, make_answer, model_info, staleness_days
 from nightfall.core.context import Context
 from nightfall.core.contracts import Driver, Evidence, LocalizedText
 from nightfall.indicators.ports import calls_series, forecast_next_week, pressure
@@ -60,11 +60,11 @@ def run(ctx: Context, prior=None) -> list:
         }[verdict]
         en = (
             f"{name} port activity is {word_en}: {p.calls_7d:.0f} vessel calls in the 7 days to "
-            f"{p.data_through:%b %d} vs ~{p.baseline_mean:.0f} typical."
+            f"{fmt_date(p.data_through)} vs ~{p.baseline_mean:.0f} typical."
         )
         fil = (
             f"Ang aktibidad sa pantalan ng {name} ay {word_fil}: {p.calls_7d:.0f} barko sa nakaraang 7 araw "
-            f"hanggang {p.data_through:%b %d}, kumpara sa karaniwang ~{p.baseline_mean:.0f}."
+            f"hanggang {fmt_date(p.data_through, 'fil')}, kumpara sa karaniwang ~{p.baseline_mean:.0f}."
         )
         caveats = [
             "Vessel-call volume does not by itself measure berth wait time."

@@ -268,6 +268,9 @@ def test_da_links_and_incremental_fetch(monkeypatch):
     )
     monkeypatch.setattr(da_prices, "pdf_text", lambda content: "extracted text " * 20)
     envs = list(all_sources()["da_prices"](http, known=known).fetch(NOW))
-    assert [e.request["url"] for e in envs] == [links[1]] and envs[0].payload == {"text": "extracted text " * 20, "method": "text"}
+    assert [e.request["url"] for e in envs] == [links[1]] and envs[0].payload == {
+        "text": "extracted text " * 20,
+        "method": "text",
+    }
     pdf_requests = [str(r.url) for r in seen if str(r.url).endswith(".pdf")]
     assert pdf_requests == [links[1]]

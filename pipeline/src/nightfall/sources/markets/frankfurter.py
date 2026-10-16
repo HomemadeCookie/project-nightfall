@@ -17,7 +17,7 @@ class Frankfurter(Source):
     license = [License.ATTRIBUTION]
     cadence = "daily"
     attribution = "European Central Bank reference rates via Frankfurter"
-    lookback_days = 45
+    lookback_days = 21
 
     def fetch(self, now: datetime) -> Iterator[Envelope]:
         start = (now - timedelta(days=self.lookback_days)).strftime("%Y-%m-%d")

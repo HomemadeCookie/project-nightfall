@@ -42,12 +42,14 @@ def run(ctx: Context, prior=None) -> list:
                 else "normal"
             )
             pct = a.pct_vs_norm * 100
+            where_en = "in the Philippines" if scope_id == "PH" else f"at {scope_name}"
+            where_fil = "sa Pilipinas" if scope_id == "PH" else f"sa {scope_name}"
             en = (
-                f"{label_en} arrivals at {scope_name} are {verdict.replace('_', ' ')}: "
+                f"{label_en} arrivals {where_en} are {verdict.replace('_', ' ')}: "
                 f"{a.tonnes_28d / 1000:,.0f}k t over 28 days ({pct:+.0f}% vs the previous months)."
             )
             fil = (
-                f"Ang pagdating ng {label_fil} sa {scope_name} ay {verdict.replace('_', ' ')}: "
+                f"Ang pagdating ng {label_fil} {where_fil} ay {verdict.replace('_', ' ')}: "
                 f"{a.tonnes_28d / 1000:,.0f}k t sa 28 araw ({pct:+.0f}% kumpara sa mga nakaraang buwan)."
             )
             answers.append(

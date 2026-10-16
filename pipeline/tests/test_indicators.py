@@ -6,7 +6,7 @@ from nightfall.core.context import Context
 from nightfall.core.lake import Lake
 from nightfall.indicators import arrivals, chokepoints, fuel, ports, prices, storms
 from nightfall.stage import stage_all
-from tests.helpers import NOW, put, seed_da_weekly, seed_fuel, seed_ports, seed_storm
+from tests.helpers import NOW, business_days, put, seed_da_weekly, seed_fuel, seed_ports, seed_storm
 
 LITRES = 3.78541
 
@@ -169,3 +169,96 @@ def test_features_need_twelve_weeks_of_history(lake_dir):
     assert prices.features_at(series, 5, [], [], []) is None
     f = prices.features_at(series, 20, [], [], [])
     assert len(f) == len(prices.FEATURE_NAMES) and f[3] == f[4] == f[5] == 0.0  # no world/fx/fuel data
+
+
+# -- fuel: holidays and unexplained jumps ----------------------------------------------------------
+def _eia_rows(days, diesel, gasoline, brent, wti=None):
+    rows = []
+    wti = wti or [b - 3 for b in brent]
+    for d, dv, gv, bv, wv in zip(days, diesel, gasoline, brent, wti, strict=True):
+        for product, v, unit in (
+            ("EPD2DXL0", dv, "$/GAL"),
+            ("EPMRU", gv, "$/GAL"),
+            ("EPCBRENT", bv, "$/BBL"),
+            ("EPCWTI", wv, "$/BBL"),
+        ):
+            rows.append({"period": d.isoformat(), "product": product, "value": str(v), "units": unit})
+    return rows
+
+
+def test_us_holiday_carry_forward_is_not_a_trading_day(lake_dir):
+    days = [
+        date(2026, 10, 5) + timedelta(days=k) for k in (0, 1, 2, 3, 4, 7, 8)
+    ]  # Mon-Fri, then Mon 12th, Tue 13th
+    diesel = [4.5, 4.6, 4.7, 4.8, 4.9, 4.9, 5.0]  # Mon 12th repeats Friday: Columbus Day
+    gas = [3.5, 3.5, 3.6, 3.6, 3.7, 3.7, 3.8]
+    brent = [100, 101, 102, 103, 104, 105, 106]  # Brent still trades on the 12th
+    wti = [97, 98, 99, 100, 101, 101, 103]  # WTI is a US price: it repeats too
+    lake = Lake(lake_dir)
+    put(
+        lake,
+        "eia",
+        "spot_prices",
+        _eia_rows(days, diesel, gas, brent, wti),
+        at=datetime(2026, 10, 14, 12, tzinfo=UTC),
+    )
+    put(
+        lake,
+        "frankfurter",
+        "usd_php",
+        {"rates": {(date(2026, 10, 1) + timedelta(days=k)).isoformat(): {"PHP": 58.0} for k in range(20)}},
+        at=datetime(2026, 10, 14, 12, tzinfo=UTC),
+    )
+    stage_all(lake)
+    con = lake.connect()
+    assert (
+        con.execute(
+            "SELECT count(*) FROM staging_eia_spot WHERE date = DATE '2026-10-12' AND product = 'EPD2DXL0'"
+        ).fetchone()[0]
+        == 0
+    )
+    assert (
+        con.execute(
+            "SELECT count(*) FROM staging_eia_spot WHERE date = DATE '2026-10-12' AND product = 'EPCBRENT'"
+        ).fetchone()[0]
+        == 1
+    )
+    assert con.execute("SELECT date FROM staging_eia_holidays").fetchall() == [(date(2026, 10, 12),)]
+    sig = fuel.fuel_signal(Context.from_lake(lake, datetime(2026, 10, 15, 12, tzinfo=UTC)), "diesel")
+    # Expected by Oct 15: Tue 13th and Wed 14th. Monday is excluded as a holiday; Wednesday's price is not in this data yet.
+    assert sig.current.n_days == 1 and sig.current.expected_days == 2
+
+
+def test_unexplained_jump_is_neutralised_but_crude_driven_moves_are_kept():
+    days = [date(2026, 10, 5) + timedelta(days=k) for k in range(6)]
+    flat_crude = {d: 100.0 for d in days}
+    gas = [3.50, 3.52, 3.51, 3.00, 3.02, 3.03]  # -14% step on day 4 while crude is flat: grade switch
+    adj, jumps = fuel.adjust_jumps(list(zip(days, gas, strict=True)), flat_crude)
+    assert jumps == [days[3]]
+    assert adj[3][1] == pytest.approx(adj[2][1])  # the step day is flat
+    assert adj[5][1] - adj[3][1] == pytest.approx(gas[5] - gas[3])  # later moves are preserved
+
+    falling_crude = {d: 100.0 * (0.86 if i >= 3 else 1.0) for i, d in enumerate(days)}
+    adj2, jumps2 = fuel.adjust_jumps(list(zip(days, gas, strict=True)), falling_crude)
+    assert jumps2 == [] and adj2[3][1] == pytest.approx(3.00)  # crude fell as much: a real move
+
+
+def test_signal_ignores_a_grade_switch_and_says_so(lake_dir):
+    lake = Lake(lake_dir)
+    days = business_days(date(2026, 10, 15), 12)
+    gas = [3.50] * 7 + [3.00] * 5  # step in the middle of the last two weeks
+    rows = _eia_rows(days, [4.5] * 12, gas, [100] * 12)
+    put(lake, "eia", "spot_prices", rows)
+    put(
+        lake,
+        "frankfurter",
+        "usd_php",
+        {"rates": {(date(2026, 10, 15) - timedelta(days=k)).isoformat(): {"PHP": 58.0} for k in range(30)}},
+    )
+    stage_all(lake)
+    sig = fuel.fuel_signal(Context.from_lake(lake, NOW), "gasoline")
+    assert sig.delta_php_l == pytest.approx(0.0, abs=1e-9) and len(sig.jumps) == 1
+    from nightfall.answers.questions import fuel_next_week
+
+    answer = {a.scope["product"]: a for a in fuel_next_week.run(Context.from_lake(lake, NOW))}["gasoline"]
+    assert answer.verdict == "flat" and any("Ignored an unexplained" in c for c in answer.caveats)
