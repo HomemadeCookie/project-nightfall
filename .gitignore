@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+node_modules/
+dist/
+.wrangler/
+/lake/
+/data/
+*.duckdb
+*.duckdb.wal
+.env
+.env.*
+!.env.example
+*.tar.gz

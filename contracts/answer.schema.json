@@ -1,0 +1,306 @@
+{
+  "$defs": {
+    "Driver": {
+      "additionalProperties": false,
+      "properties": {
+        "feature": {
+          "title": "Feature",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value"
+        },
+        "effect": {
+          "default": "0",
+          "enum": [
+            "+",
+            "-",
+            "0"
+          ],
+          "title": "Effect",
+          "type": "string"
+        }
+      },
+      "required": [
+        "feature",
+        "value"
+      ],
+      "title": "Driver",
+      "type": "object"
+    },
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ref"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        },
+        "value": {
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "kind",
+        "label"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "License": {
+      "enum": [
+        "PUBLIC_DOMAIN",
+        "ATTRIBUTION",
+        "SHARE_ALIKE",
+        "UNCLEAR",
+        "NON_COMMERCIAL"
+      ],
+      "title": "License",
+      "type": "string"
+    },
+    "LocalizedText": {
+      "additionalProperties": false,
+      "properties": {
+        "en": {
+          "title": "En",
+          "type": "string"
+        },
+        "fil": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fil"
+        }
+      },
+      "required": [
+        "en"
+      ],
+      "title": "LocalizedText",
+      "type": "object"
+    },
+    "ModelInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "validated",
+            "experimental",
+            "unvalidated",
+            "planned"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "backtest_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Backtest Ref"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "status"
+      ],
+      "title": "ModelInfo",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One question evaluated for one scope at one point in time.",
+  "properties": {
+    "question_id": {
+      "title": "Question Id",
+      "type": "string"
+    },
+    "question_version": {
+      "title": "Question Version",
+      "type": "integer"
+    },
+    "scope": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Scope",
+      "type": "object"
+    },
+    "as_of": {
+      "format": "date-time",
+      "title": "As Of",
+      "type": "string"
+    },
+    "valid_until": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Valid Until"
+    },
+    "data_through": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Data Through"
+    },
+    "verdict": {
+      "title": "Verdict",
+      "type": "string"
+    },
+    "value": {
+      "additionalProperties": true,
+      "title": "Value",
+      "type": "object"
+    },
+    "confidence": {
+      "enum": [
+        "high",
+        "medium",
+        "low",
+        "none"
+      ],
+      "title": "Confidence",
+      "type": "string"
+    },
+    "coverage": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Coverage",
+      "type": "number"
+    },
+    "drivers": {
+      "items": {
+        "$ref": "#/$defs/Driver"
+      },
+      "title": "Drivers",
+      "type": "array"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/Evidence"
+      },
+      "title": "Evidence",
+      "type": "array"
+    },
+    "text": {
+      "$ref": "#/$defs/LocalizedText"
+    },
+    "model": {
+      "$ref": "#/$defs/ModelInfo"
+    },
+    "license": {
+      "items": {
+        "$ref": "#/$defs/License"
+      },
+      "title": "License",
+      "type": "array"
+    },
+    "sources": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Sources",
+      "type": "array"
+    },
+    "attributions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Attributions",
+      "type": "array"
+    },
+    "caveats": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Caveats",
+      "type": "array"
+    }
+  },
+  "required": [
+    "question_id",
+    "question_version",
+    "scope",
+    "as_of",
+    "verdict",
+    "confidence",
+    "coverage",
+    "text",
+    "model",
+    "license"
+  ],
+  "title": "Answer",
+  "type": "object"
+}

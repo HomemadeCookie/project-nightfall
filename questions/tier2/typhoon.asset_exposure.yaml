@@ -1,0 +1,28 @@
+id: typhoon.asset_exposure
+version: 1
+tier: 2
+status: experimental
+buyers:
+- corporates
+- insurers
+- lenders
+decision: Secure sites, reroute shipments, pre-position stock.
+ask:
+  en: Which of my sites will a tracked storm come close to, and when?
+  fil: Aling mga lugar ko ang lalapitan ng bagyo, at kailan?
+scope:
+  site: customer site id
+cadence: 3h
+inputs:
+- gdacs.tc_current
+baseline: nearest-storm distance only
+metric:
+  primary: track_error_km
+  secondary: []
+ship_when: Exposure verdicts replayed on IBTrACS best tracks agree with realised closest approach.
+min_coverage: 0.5
+outputs:
+- web
+- feed
+notes: Demo sites in reference/example_sites.csv; customers supply their own via `nightfall exposure --sites
+  FILE`.

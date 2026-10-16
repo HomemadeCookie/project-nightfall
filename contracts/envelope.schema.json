@@ -1,0 +1,77 @@
+{
+  "$defs": {
+    "License": {
+      "enum": [
+        "PUBLIC_DOMAIN",
+        "ATTRIBUTION",
+        "SHARE_ALIKE",
+        "UNCLEAR",
+        "NON_COMMERCIAL"
+      ],
+      "title": "License",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "source": {
+      "title": "Source",
+      "type": "string"
+    },
+    "source_version": {
+      "default": "1",
+      "title": "Source Version",
+      "type": "string"
+    },
+    "dataset": {
+      "title": "Dataset",
+      "type": "string"
+    },
+    "license": {
+      "items": {
+        "$ref": "#/$defs/License"
+      },
+      "title": "License",
+      "type": "array"
+    },
+    "fetched_at": {
+      "format": "date-time",
+      "title": "Fetched At",
+      "type": "string"
+    },
+    "event_time": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Event Time"
+    },
+    "request": {
+      "additionalProperties": true,
+      "title": "Request",
+      "type": "object"
+    },
+    "payload": {
+      "title": "Payload"
+    },
+    "payload_sha256": {
+      "default": "",
+      "title": "Payload Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source",
+    "dataset",
+    "license",
+    "fetched_at",
+    "payload"
+  ],
+  "title": "Envelope",
+  "type": "object"
+}

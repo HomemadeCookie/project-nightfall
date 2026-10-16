@@ -1,0 +1,17 @@
+item_id,match,label_en,label_fil,commodity_id,unit_hint
+rice_regular,^LOCAL COMMERCIAL RICE\|Regular Milled,Regular milled rice (local),Bigas - regular milled,rice,kg
+rice_wellmilled,^LOCAL COMMERCIAL RICE\|Well Milled,Well-milled rice (local),Bigas - well milled,rice,kg
+rice_premium,^LOCAL COMMERCIAL RICE\|Premium 5% broken,Premium rice (local),Bigas - premium,rice,kg
+rice_imported_wellmilled,^IMPORTED COMMERCIAL RICE\|Well Milled,Well-milled rice (imported),Bigas - imported well milled,rice,kg
+sugar_refined,Sugar \(Refined\),Refined sugar,Asukal - puti,sugar,kg
+sugar_brown,Sugar \(Brown\),Brown sugar,Asukal - pula,sugar,kg
+cooking_oil_palm_1l,Cooking Oil \(Palm\) 1 Liter,Cooking oil - palm (1 L),Mantika - palm (1 L),cooking_oil,L
+cooking_oil_coconut_1l,Cooking Oil \(Coconut\) 1 Liter,Cooking oil - coconut (1 L),Mantika - niyog (1 L),cooking_oil,L
+egg_white_medium,"Chicken Egg \(White, Medium\)","Egg (white, medium)","Itlog (puti, medium)",,pc
+salt_iodized,Salt \(Iodized\),Iodized salt,Asin (iodized),,kg
+pork_liempo_local,"Pork Belly \(Liempo\), Local",Pork belly (local),Liempo,,kg
+chicken_whole,Whole Chicken,Whole chicken,Manok,,kg
+galunggong_local,"Galunggong, Local",Galunggong (local),Galunggong,,kg
+garlic_local,"Garlic, Native/Local",Garlic (local),Bawang (lokal),,kg
+red_onion_local,"Red Onion, Local",Red onion (local),Pulang sibuyas,,kg
+tomato,^LOWLAND VEGETABLES\|Tomato,Tomato,Kamatis,,kg

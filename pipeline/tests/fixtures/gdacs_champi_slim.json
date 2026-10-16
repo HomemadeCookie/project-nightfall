@@ -1,0 +1,215 @@
+[
+ {
+  "geometry": {
+   "coordinates": [
+    161.2,
+    9.57
+   ],
+   "radius_deg": 0.06,
+   "type": "Point"
+  },
+  "properties": {
+   "Class": "Point_Polygon_Point_0",
+   "alertlevel": "Orange",
+   "datemodified": "2026-10-16T07:53:42",
+   "episodeid": 8,
+   "eventid": 1001338,
+   "eventname": "CHAMPI-26",
+   "fromdate": "2026-10-14T12:00:00",
+   "iscurrent": "true",
+   "polygondate": "2026-10-16T06:00:00",
+   "polygonlabel": "14/10 12:00 UTC",
+   "severitydata": {
+    "severity": 240.7392,
+    "severitytext": "Tropical Storm (maximum wind speed of 241 km/h)",
+    "severityunit": "km/h"
+   },
+   "source": "JTWC",
+   "todate": "2026-10-16T06:00:00"
+  }
+ },
+ {
+  "geometry": {
+   "coordinates": [
+    160.5,
+    10.370000000000001
+   ],
+   "radius_deg": 0.06,
+   "type": "Point"
+  },
+  "properties": {
+   "Class": "Point_Polygon_Point_1",
+   "alertlevel": "Orange",
+   "datemodified": "2026-10-16T07:53:42",
+   "episodeid": 8,
+   "eventid": 1001338,
+   "eventname": "CHAMPI-26",
+   "fromdate": "2026-10-14T12:00:00",
+   "iscurrent": "true",
+   "polygondate": "2026-10-16T06:00:00",
+   "polygonlabel": "14/10 18:00 UTC",
+   "severitydata": {
+    "severity": 240.7392,
+    "severitytext": "Tropical Storm (maximum wind speed of 241 km/h)",
+    "severityunit": "km/h"
+   },
+   "source": "JTWC",
+   "todate": "2026-10-16T06:00:00"
+  }
+ },
+ {
+  "geometry": {
+   "coordinates": [
+    159.4,
+    10.67
+   ],
+   "radius_deg": 0.06,
+   "type": "Point"
+  },
+  "properties": {
+   "Class": "Point_Polygon_Point_2",
+   "alertlevel": "Orange",
+   "datemodified": "2026-10-16T07:53:42",
+   "episodeid": 8,
+   "eventid": 1001338,
+   "eventname": "CHAMPI-26",
+   "fromdate": "2026-10-14T12:00:00",
+   "iscurrent": "true",
+   "polygondate": "2026-10-16T06:00:00",
+   "polygonlabel": "15/10 00:00 UTC",
+   "severitydata": {
+    "severity": 240.7392,
+    "severitytext": "Tropical Storm (maximum wind speed of 241 km/h)",
+    "severityunit": "km/h"
+   },
+   "source": "JTWC",
+   "todate": "2026-10-16T06:00:00"
+  }
+ },
+ {
+  "geometry": {
+   "coordinates": [
+    158.4,
+    10.870000000000001
+   ],
+   "radius_deg": 0.06,
+   "type": "Point"
+  },
+  "properties": {
+   "Class": "Point_Polygon_Point_3",
+   "alertlevel": "Orange",
+   "datemodified": "2026-10-16T07:53:42",
+   "episodeid": 8,
+   "eventid": 1001338,
+   "eventname": "CHAMPI-26",
+   "fromdate": "2026-10-14T12:00:00",
+   "iscurrent": "true",
+   "polygondate": "2026-10-16T06:00:00",
+   "polygonlabel": "15/10 06:00 UTC",
+   "severitydata": {
+    "severity": 240.7392,
+    "severitytext": "Tropical Storm (maximum wind speed of 241 km/h)",
+    "severityunit": "km/h"
+   },
+   "source": "JTWC",
+   "todate": "2026-10-16T06:00:00"
+  }
+ },
+ {
+  "geometry": {
+   "coordinates": [
+    157.4,
+    10.97
+   ],
+   "radius_deg": 0.06,
+   "type": "Point"
+  },
+  "properties": {
+   "Class": "Point_Polygon_Point_4",
+   "alertlevel": "Orange",
+   "datemodified": "2026-10-16T07:53:42",
+   "episodeid": 8,
+   "eventid": 1001338,
+   "eventname": "CHAMPI-26",
+   "fromdate": "2026-10-14T12:00:00",
+   "iscurrent": "true",
+   "polygondate": "2026-10-16T06:00:00",
+   "polygonlabel": "15/10 12:00 UTC",
+   "severitydata": {
+    "severity": 240.7392,
+    "severitytext": "Tropical Storm (maximum wind speed of 241 km/h)",
+    "severityunit": "km/h"
+   },
+   "source": "JTWC",
+   "todate": "2026-10-16T06:00:00"
+  }
+ },
+ {
+  "geometry": {
+   "coordinates": [
+    [
+     134.1,
+     17.2
+    ],
+    [
+     129.5,
+     19.4
+    ]
+   ],
+   "type": "LineString"
+  },
+  "properties": {
+   "Class": "Line_Line_0",
+   "alertlevel": "Orange",
+   "datemodified": "2026-10-16T07:53:42",
+   "episodeid": 8,
+   "eventid": 1001338,
+   "eventname": "CHAMPI-26",
+   "fromdate": "2026-10-14T12:00:00",
+   "iscurrent": "true",
+   "polygondate": "2026-10-16T06:00:00",
+   "polygonlabel": "HU",
+   "severitydata": {
+    "severity": 240.7392,
+    "severitytext": "Tropical Storm (maximum wind speed of 241 km/h)",
+    "severityunit": "km/h"
+   },
+   "source": "JTWC",
+   "todate": "2026-10-16T06:00:00"
+  }
+ },
+ {
+  "geometry": {
+   "coordinates": [
+    [
+     138.6,
+     15.1
+    ],
+    [
+     134.1,
+     17.2
+    ]
+   ],
+   "type": "LineString"
+  },
+  "properties": {
+   "Class": "Line_Line_1",
+   "alertlevel": "Orange",
+   "datemodified": "2026-10-16T07:53:42",
+   "episodeid": 8,
+   "eventid": 1001338,
+   "eventname": "CHAMPI-26",
+   "fromdate": "2026-10-14T12:00:00",
+   "iscurrent": "true",
+   "polygondate": "2026-10-16T06:00:00",
+   "polygonlabel": "HU",
+   "severitydata": {
+    "severity": 240.7392,
+    "severitytext": "Tropical Storm (maximum wind speed of 241 km/h)",
+    "severityunit": "km/h"
+   },
+   "source": "JTWC",
+   "todate": "2026-10-16T06:00:00"
+  }
+ }
+]

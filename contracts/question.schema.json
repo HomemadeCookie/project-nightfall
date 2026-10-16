@@ -1,0 +1,173 @@
+{
+  "$defs": {
+    "LocalizedText": {
+      "additionalProperties": false,
+      "properties": {
+        "en": {
+          "title": "En",
+          "type": "string"
+        },
+        "fil": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fil"
+        }
+      },
+      "required": [
+        "en"
+      ],
+      "title": "LocalizedText",
+      "type": "object"
+    },
+    "Metric": {
+      "additionalProperties": false,
+      "properties": {
+        "primary": {
+          "title": "Primary",
+          "type": "string"
+        },
+        "secondary": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Secondary",
+          "type": "array"
+        }
+      },
+      "required": [
+        "primary"
+      ],
+      "title": "Metric",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "``questions/**/*.yaml``. The spec is the product; code exists to satisfy it.",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "integer"
+    },
+    "tier": {
+      "enum": [
+        1,
+        2,
+        3
+      ],
+      "title": "Tier",
+      "type": "integer"
+    },
+    "status": {
+      "enum": [
+        "validated",
+        "experimental",
+        "unvalidated",
+        "planned"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "buyers": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Buyers",
+      "type": "array"
+    },
+    "decision": {
+      "title": "Decision",
+      "type": "string"
+    },
+    "ask": {
+      "$ref": "#/$defs/LocalizedText"
+    },
+    "scope": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Scope",
+      "type": "object"
+    },
+    "cadence": {
+      "title": "Cadence",
+      "type": "string"
+    },
+    "inputs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Inputs",
+      "type": "array"
+    },
+    "baseline": {
+      "title": "Baseline",
+      "type": "string"
+    },
+    "metric": {
+      "$ref": "#/$defs/Metric"
+    },
+    "ship_when": {
+      "title": "Ship When",
+      "type": "string"
+    },
+    "min_coverage": {
+      "default": 0.5,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Min Coverage",
+      "type": "number"
+    },
+    "outputs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Outputs",
+      "type": "array"
+    },
+    "notes": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Notes"
+    },
+    "implemented": {
+      "default": true,
+      "title": "Implemented",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "version",
+    "tier",
+    "status",
+    "buyers",
+    "decision",
+    "ask",
+    "scope",
+    "cadence",
+    "inputs",
+    "baseline",
+    "metric",
+    "ship_when"
+  ],
+  "title": "QuestionSpec",
+  "type": "object"
+}

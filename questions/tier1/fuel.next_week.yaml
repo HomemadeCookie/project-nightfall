@@ -1,0 +1,32 @@
+id: fuel.next_week
+version: 1
+tier: 1
+status: unvalidated
+buyers:
+- fleets
+- logistics
+- retail
+- distributors
+decision: Fill up or wait before Tuesday; budget fuel for the week; time LPG and diesel purchases.
+ask:
+  en: Will pump prices go up or down next Tuesday?
+  fil: Tataas o bababa ba ang presyo ng gasolina sa Martes?
+scope:
+  product: diesel | gasoline
+cadence: daily (published Friday evening Manila time)
+inputs:
+- eia.spot_prices
+- frankfurter.usd_php
+baseline: 'persistence: last week''s cost change; zero'
+metric:
+  primary: direction_balanced_accuracy
+  secondary:
+  - mae_php_per_l
+ship_when: At least 8 official adjustments recorded and direction balanced accuracy >= 0.6, beating both
+  baselines.
+min_coverage: 0.5
+outputs:
+- web
+- bot
+- feed
+notes: Uses NY Harbor spot as a proxy for Singapore benchmarks. Ground truth accumulates in eval/ground_truth/fuel_adjustments.csv.

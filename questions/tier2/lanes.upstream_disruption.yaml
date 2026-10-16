@@ -1,0 +1,27 @@
+id: lanes.upstream_disruption
+version: 1
+tier: 2
+status: experimental
+buyers:
+- procurement
+- forwarders
+- importers
+decision: Anticipate freight-rate and capacity effects before they reach Philippine ports.
+ask:
+  en: Is traffic through a key strait unusually low or high?
+  fil: Kakaiba ba ang dami ng barko sa mahahalagang kipot?
+scope:
+  chokepoint: PortWatch chokepoint id
+cadence: daily
+inputs:
+- portwatch.daily_chokepoints
+baseline: 12-week trailing mean
+metric:
+  primary: lead_time_days
+  secondary: []
+ship_when: Measured lead time to Philippine port volumes is stable across >= 3 past disruptions.
+min_coverage: 0.5
+outputs:
+- web
+- feed
+notes: The lag to Philippine effects is not yet measured.

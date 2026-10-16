@@ -1,0 +1,13 @@
+port_id,portwatch_id,name,lat,lon,key_port,region_code,kind
+MNL,port694,Manila,14.5916,120.8724,true,NCR,container+general
+BTG,port125,Batangas City,13.7448,121.0239,true,IVA,container+tanker+roro
+SBM,port1232,Subic Bay,14.8031,120.2914,true,III,container+bulk
+CEB,port224,Cebu,10.3141,123.9370,true,VII,container+general
+DVO,port281,Davao,7.1790,125.6594,true,XI,container+bulk
+CGY,port202,Cagayan de Oro,8.4868,124.7083,true,X,container+bulk
+GES,port386,General Santos,6.0602,125.1478,true,XII,bulk+fish
+ILO,port2055,Iloilo,10.7086,122.5901,true,VI,container+general
+BCD,port2395,Bacolod,10.6990,122.9446,false,VI,general
+ILG,port488,Iligan,8.2326,124.2275,false,X,bulk
+ZAM,port1420,Zamboanga,6.9084,122.0606,false,IX,general
+OMC,port858,Ormoc,11.0061,124.6025,false,VIII,roro

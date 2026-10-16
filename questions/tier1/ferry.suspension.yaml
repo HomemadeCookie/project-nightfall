@@ -1,0 +1,31 @@
+id: ferry.suspension
+version: 1
+tier: 1
+status: unvalidated
+buyers:
+- logistics
+- distributors
+- retail
+decision: Dispatch, hold or reroute trucks; restock island stores before sailings stop.
+ask:
+  en: Will sailings on this RoRo route be suspended in the next few days?
+  fil: Makakansela ba ang biyahe ng barko sa rutang ito sa susunod na mga araw?
+scope:
+  ferry_route: route id from reference/ferry_routes.csv
+cadence: 6h (hourly when a storm is tracked)
+inputs:
+- open_meteo.route_forecast
+- gdacs.tc_current
+baseline: 'storm-signal rule: suspended if a tracked storm is within 300 km'
+metric:
+  primary: brier
+  secondary:
+  - recall_48h
+ship_when: Needs labelled suspension notices (>= 15 storms) and must beat the baseline on Brier score.
+min_coverage: 0.5
+outputs:
+- web
+- bot
+- feed
+notes: Ordinal risk ladder, not a probability. Blocked from commercial publishing while open_meteo is
+  NON_COMMERCIAL.

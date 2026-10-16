@@ -1,0 +1,565 @@
+{
+ "features": [
+  {
+   "type": "Feature",
+   "bbox": [
+    152.7,
+    11.4,
+    152.7,
+    11.4
+   ],
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     152.7,
+     11.4
+    ]
+   },
+   "properties": {
+    "eventtype": "TC",
+    "eventid": 1001338,
+    "episodeid": 8,
+    "eventname": "CHAMPI-26",
+    "glide": "",
+    "name": "Tropical Cyclone CHAMPI-26",
+    "url": {
+     "geometry": "https://www.gdacs.org/gdacsapi/api/polygons/getgeometry?eventtype=TC&eventid=1001338&episodeid=8",
+     "report": "https://www.gdacs.org/report.aspx?eventid=1001338&episodeid=8&eventtype=TC",
+     "details": "https://www.gdacs.org/gdacsapi/api/events/geteventdata?eventtype=TC&eventid=1001338"
+    },
+    "alertlevel": "Orange",
+    "alertscore": 2,
+    "episodealertlevel": "Orange",
+    "episodealertscore": 2.0,
+    "istemporary": "false",
+    "iscurrent": "true",
+    "country": "Guam",
+    "fromdate": "2026-10-14T12:00:00",
+    "todate": "2026-10-16T06:00:00",
+    "datemodified": "2026-10-16T07:53:42",
+    "iso3": "GUM",
+    "source": "JTWC",
+    "sourceid": "",
+    "polygonlabel": "Centroid",
+    "Class": "Point_Centroid",
+    "countryonland": "",
+    "affectedcountries": [
+     {
+      "iso2": "GU",
+      "iso3": "GUM",
+      "countryname": "Guam"
+     }
+    ],
+    "severitydata": {
+     "severity": 240.7392,
+     "severitytext": "Tropical Storm (maximum wind speed of 241 km/h)",
+     "severityunit": "km/h"
+    }
+   }
+  },
+  {
+   "type": "Feature",
+   "bbox": [
+    129.5,
+    17.2,
+    134.1,
+    19.4
+   ],
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      134.1,
+      17.2
+     ],
+     [
+      129.5,
+      19.4
+     ]
+    ]
+   },
+   "properties": {
+    "eventtype": "TC",
+    "eventid": 1001338,
+    "episodeid": 8,
+    "eventname": "CHAMPI-26",
+    "glide": "",
+    "name": "Tropical Cyclone CHAMPI-26",
+    "url": {
+     "geometry": "https://www.gdacs.org/gdacsapi/api/polygons/getgeometry?eventtype=TC&eventid=1001338&episodeid=8",
+     "report": "https://www.gdacs.org/report.aspx?eventid=1001338&episodeid=8&eventtype=TC",
+     "details": "https://www.gdacs.org/gdacsapi/api/events/geteventdata?eventtype=TC&eventid=1001338"
+    },
+    "alertlevel": "Orange",
+    "alertscore": 2,
+    "episodealertlevel": "Orange",
+    "episodealertscore": 2.0,
+    "istemporary": "false",
+    "iscurrent": "true",
+    "country": "Guam",
+    "fromdate": "2026-10-14T12:00:00",
+    "todate": "2026-10-16T06:00:00",
+    "datemodified": "2026-10-16T07:53:42",
+    "iso3": "GUM",
+    "source": "JTWC",
+    "sourceid": "",
+    "polygondate": "2026-10-16T06:00:00",
+    "polygonlabel": "HU",
+    "countryonland": "",
+    "affectedcountries": [
+     {
+      "iso2": "GU",
+      "iso3": "GUM",
+      "countryname": "Guam"
+     }
+    ],
+    "severitydata": {
+     "severity": 240.7392,
+     "severitytext": "Tropical Storm (maximum wind speed of 241 km/h)",
+     "severityunit": "km/h"
+    },
+    "Class": "Line_Line_0"
+   }
+  },
+  {
+   "type": "Feature",
+   "bbox": [
+    161.17,
+    9.57,
+    161.23,
+    9.629999999999999
+   ],
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       161.2,
+       9.57
+      ],
+      [
+       161.21414190210476,
+       9.57354236206955
+      ],
+      [
+       161.22494408836906,
+       9.58333289300941
+      ],
+      [
+       161.22985554180016,
+       9.597059485790112
+      ],
+      [
+       161.22771638597533,
+       9.611480502970952
+      ],
+      [
+       161.2190317985249,
+       9.623190313600881
+      ],
+      [
+       161.20585270966046,
+       9.629423558412096
+      ],
+      [
+       161.19129145968236,
+       9.628708210071967
+      ],
+      [
+       161.1787867965644,
+       9.621213203435596
+      ],
+      [
+       161.17129178992803,
+       9.608708540317634
+      ],
+      [
+       161.17057644158788,
+       9.594147290339516
+      ],
+      [
+       161.1768096863991,
+       9.58096820147509
+      ],
+      [
+       161.18851949702903,
+       9.572283614024661
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "eventtype": "TC",
+    "eventid": 1001338,
+    "episodeid": 8,
+    "eventname": "CHAMPI-26",
+    "glide": "",
+    "name": "Tropical Cyclone CHAMPI-26",
+    "url": {
+     "geometry": "https://www.gdacs.org/gdacsapi/api/polygons/getgeometry?eventtype=TC&eventid=1001338&episodeid=8",
+     "report": "https://www.gdacs.org/report.aspx?eventid=1001338&episodeid=8&eventtype=TC",
+     "details": "https://www.gdacs.org/gdacsapi/api/events/geteventdata?eventtype=TC&eventid=1001338"
+    },
+    "alertlevel": "Orange",
+    "alertscore": 2,
+    "episodealertlevel": "Orange",
+    "episodealertscore": 2.0,
+    "istemporary": "false",
+    "iscurrent": "true",
+    "country": "Guam",
+    "fromdate": "2026-10-14T12:00:00",
+    "todate": "2026-10-16T06:00:00",
+    "datemodified": "2026-10-16T07:53:42",
+    "iso3": "GUM",
+    "source": "JTWC",
+    "sourceid": "",
+    "polygondate": "2026-10-16T06:00:00",
+    "polygonlabel": "14/10 12:00 UTC",
+    "countryonland": "",
+    "affectedcountries": [
+     {
+      "iso2": "GU",
+      "iso3": "GUM",
+      "countryname": "Guam"
+     }
+    ],
+    "severitydata": {
+     "severity": 240.7392,
+     "severitytext": "Tropical Storm (maximum wind speed of 241 km/h)",
+     "severityunit": "km/h"
+    },
+    "Class": "Point_Polygon_Point_0"
+   }
+  },
+  {
+   "type": "Feature",
+   "bbox": [
+    160.47,
+    10.370000000000001,
+    160.53,
+    10.43
+   ],
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       160.5,
+       10.370000000000001
+      ],
+      [
+       160.51414190210477,
+       10.37354236206955
+      ],
+      [
+       160.52494408836907,
+       10.383332893009412
+      ],
+      [
+       160.52985554180017,
+       10.397059485790113
+      ],
+      [
+       160.52771638597534,
+       10.411480502970953
+      ],
+      [
+       160.5190317985249,
+       10.423190313600882
+      ],
+      [
+       160.50585270966047,
+       10.429423558412097
+      ],
+      [
+       160.49129145968237,
+       10.428708210071967
+      ],
+      [
+       160.4787867965644,
+       10.421213203435597
+      ],
+      [
+       160.47129178992805,
+       10.408708540317635
+      ],
+      [
+       160.4705764415879,
+       10.394147290339516
+      ],
+      [
+       160.47680968639912,
+       10.38096820147509
+      ],
+      [
+       160.48851949702905,
+       10.372283614024662
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "eventtype": "TC",
+    "eventid": 1001338,
+    "episodeid": 8,
+    "eventname": "CHAMPI-26",
+    "glide": "",
+    "name": "Tropical Cyclone CHAMPI-26",
+    "url": {
+     "geometry": "https://www.gdacs.org/gdacsapi/api/polygons/getgeometry?eventtype=TC&eventid=1001338&episodeid=8",
+     "report": "https://www.gdacs.org/report.aspx?eventid=1001338&episodeid=8&eventtype=TC",
+     "details": "https://www.gdacs.org/gdacsapi/api/events/geteventdata?eventtype=TC&eventid=1001338"
+    },
+    "alertlevel": "Orange",
+    "alertscore": 2,
+    "episodealertlevel": "Orange",
+    "episodealertscore": 2.0,
+    "istemporary": "false",
+    "iscurrent": "true",
+    "country": "Guam",
+    "fromdate": "2026-10-14T12:00:00",
+    "todate": "2026-10-16T06:00:00",
+    "datemodified": "2026-10-16T07:53:42",
+    "iso3": "GUM",
+    "source": "JTWC",
+    "sourceid": "",
+    "polygondate": "2026-10-16T06:00:00",
+    "polygonlabel": "14/10 18:00 UTC",
+    "countryonland": "",
+    "affectedcountries": [
+     {
+      "iso2": "GU",
+      "iso3": "GUM",
+      "countryname": "Guam"
+     }
+    ],
+    "severitydata": {
+     "severity": 240.7392,
+     "severitytext": "Tropical Storm (maximum wind speed of 241 km/h)",
+     "severityunit": "km/h"
+    },
+    "Class": "Point_Polygon_Point_1"
+   }
+  },
+  {
+   "type": "Feature",
+   "bbox": [
+    150.07,
+    11.97,
+    150.13,
+    12.03
+   ],
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       150.1,
+       11.97
+      ],
+      [
+       150.11414190210476,
+       11.97354236206955
+      ],
+      [
+       150.12494408836906,
+       11.983332893009411
+      ],
+      [
+       150.12985554180017,
+       11.997059485790112
+      ],
+      [
+       150.12771638597533,
+       12.011480502970953
+      ],
+      [
+       150.1190317985249,
+       12.023190313600882
+      ],
+      [
+       150.10585270966047,
+       12.029423558412097
+      ],
+      [
+       150.09129145968237,
+       12.028708210071967
+      ],
+      [
+       150.0787867965644,
+       12.021213203435597
+      ],
+      [
+       150.07129178992804,
+       12.008708540317635
+      ],
+      [
+       150.0705764415879,
+       11.994147290339516
+      ],
+      [
+       150.07680968639912,
+       11.98096820147509
+      ],
+      [
+       150.08851949702904,
+       11.972283614024661
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "eventtype": "TC",
+    "eventid": 1001338,
+    "episodeid": 8,
+    "eventname": "CHAMPI-26",
+    "glide": "",
+    "name": "Tropical Cyclone CHAMPI-26",
+    "url": {
+     "geometry": "https://www.gdacs.org/gdacsapi/api/polygons/getgeometry?eventtype=TC&eventid=1001338&episodeid=8",
+     "report": "https://www.gdacs.org/report.aspx?eventid=1001338&episodeid=8&eventtype=TC",
+     "details": "https://www.gdacs.org/gdacsapi/api/events/geteventdata?eventtype=TC&eventid=1001338"
+    },
+    "alertlevel": "Orange",
+    "alertscore": 2,
+    "episodealertlevel": "Orange",
+    "episodealertscore": 2.0,
+    "istemporary": "false",
+    "iscurrent": "true",
+    "country": "Guam",
+    "fromdate": "2026-10-14T12:00:00",
+    "todate": "2026-10-16T06:00:00",
+    "datemodified": "2026-10-16T07:53:42",
+    "iso3": "GUM",
+    "source": "JTWC",
+    "sourceid": "",
+    "polygondate": "2026-10-16T06:00:00",
+    "polygonlabel": "16/10 18:00 UTC",
+    "countryonland": "",
+    "affectedcountries": [
+     {
+      "iso2": "GU",
+      "iso3": "GUM",
+      "countryname": "Guam"
+     }
+    ],
+    "severitydata": {
+     "severity": 240.7392,
+     "severitytext": "Tropical Storm (maximum wind speed of 241 km/h)",
+     "severityunit": "km/h"
+    },
+    "Class": "Point_Polygon_Point_8"
+   }
+  },
+  {
+   "type": "Feature",
+   "bbox": [
+    126.93538815610802,
+    11.150000000000002,
+    152.955031471364,
+    21.818999999999996
+   ],
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       152.7,
+       11.150000000000002
+      ],
+      [
+       152.842611788949,
+       11.192740606861202
+      ],
+      [
+       152.936461062656,
+       11.306348351646001
+      ],
+      [
+       152.949458421827,
+       11.4519779227044
+      ],
+      [
+       152.877159746314,
+       11.5798349500847
+      ],
+      [
+       147.779066586827,
+       13.209439915224902
+      ],
+      [
+       129.856924983073,
+       21.795458458285907
+      ],
+      [
+       128.37574816492403,
+       21.574182797997693
+      ],
+      [
+       127.27898099234301,
+       20.609499999999993
+      ],
+      [
+       126.94163542166201,
+       19.23125909001302
+      ],
+      [
+       127.47905828818601,
+       17.910714891187226
+      ],
+      [
+       133.413294783061,
+       15.397669553332616
+      ],
+      [
+       152.7,
+       11.150000000000002
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "eventtype": "TC",
+    "eventid": 1001338,
+    "episodeid": 8,
+    "eventname": "CHAMPI-26",
+    "glide": "",
+    "name": "Tropical Cyclone CHAMPI-26",
+    "url": {
+     "geometry": "https://www.gdacs.org/gdacsapi/api/polygons/getgeometry?eventtype=TC&eventid=1001338&episodeid=8",
+     "report": "https://www.gdacs.org/report.aspx?eventid=1001338&episodeid=8&eventtype=TC",
+     "details": "https://www.gdacs.org/gdacsapi/api/events/geteventdata?eventtype=TC&eventid=1001338"
+    },
+    "alertlevel": "Orange",
+    "alertscore": 2,
+    "episodealertlevel": "Orange",
+    "episodealertscore": 2.0,
+    "istemporary": "false",
+    "iscurrent": "true",
+    "country": "Guam",
+    "fromdate": "2026-10-14T12:00:00",
+    "todate": "2026-10-16T06:00:00",
+    "datemodified": "2026-10-16T07:53:42",
+    "iso3": "GUM",
+    "source": "JTWC",
+    "sourceid": "",
+    "polygondate": "2026-10-16T06:00:00",
+    "polygonlabel": "Uncertainty Cones",
+    "countryonland": "",
+    "affectedcountries": [
+     {
+      "iso2": "GU",
+      "iso3": "GUM",
+      "countryname": "Guam"
+     }
+    ],
+    "severitydata": {
+     "severity": 240.7392,
+     "severitytext": "Tropical Storm (maximum wind speed of 241 km/h)",
+     "severityunit": "km/h"
+    },
+    "Class": "Poly_Cones"
+   }
+  }
+ ]
+}

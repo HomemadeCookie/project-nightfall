@@ -1,0 +1,33 @@
+id: retail.stock_up
+version: 1
+tier: 1
+status: unvalidated
+buyers:
+- stores
+- distributors
+- brands
+- lenders
+decision: How much to restock this week with limited cash.
+ask:
+  en: Should I stock up this week?
+  fil: Dapat ba akong mag-imbak ngayong linggo?
+scope:
+  region: PSGC region code
+cadence: 6h
+inputs:
+- ferry.suspension
+- ports.pressure
+- fuel.next_week
+- staples.price_direction
+- gdacs.tc_current
+baseline: no advice (always 'normal')
+metric:
+  primary: upstream_hit_rate
+  secondary:
+  - user_feedback
+ship_when: Upstream answers validated and user feedback shows >= 70% 'useful'.
+min_coverage: 0.34
+outputs:
+- web
+- bot
+notes: Rules over other answers. Distributors and B2B ordering apps can white-label it.

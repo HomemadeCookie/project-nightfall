@@ -1,0 +1,68 @@
+[
+ {
+  "lat": 13.620000000000001,
+  "lon": 121.08300000000003,
+  "portid": "fso152",
+  "portname": "Philippines - Offshore Oil Terminal 1",
+  "vessel_count_RoRo": 0,
+  "vessel_count_container": 0,
+  "vessel_count_dry_bulk": 0,
+  "vessel_count_tanker": 5,
+  "vessel_count_total": 7
+ },
+ {
+  "lat": 9.736639064,
+  "lon": 118.7327548,
+  "portid": "port1056",
+  "portname": "Puerto Princesa",
+  "vessel_count_RoRo": 1,
+  "vessel_count_container": 6,
+  "vessel_count_dry_bulk": 4,
+  "vessel_count_tanker": 45,
+  "vessel_count_total": 86
+ },
+ {
+  "lat": 14.80314981,
+  "lon": 120.2913574,
+  "portid": "port1232",
+  "portname": "Subic Bay",
+  "vessel_count_RoRo": 30,
+  "vessel_count_container": 316,
+  "vessel_count_dry_bulk": 77,
+  "vessel_count_tanker": 268,
+  "vessel_count_total": 868
+ },
+ {
+  "lat": 9.815652287,
+  "lon": 125.4545559,
+  "portid": "port1238",
+  "portname": "Surigao City",
+  "vessel_count_RoRo": 0,
+  "vessel_count_container": 1,
+  "vessel_count_dry_bulk": 1,
+  "vessel_count_tanker": 0,
+  "vessel_count_total": 23
+ },
+ {
+  "lat": 13.74477092,
+  "lon": 121.0239173,
+  "portid": "port125",
+  "portname": "Batangas City",
+  "vessel_count_RoRo": 311,
+  "vessel_count_container": 355,
+  "vessel_count_dry_bulk": 112,
+  "vessel_count_tanker": 1002,
+  "vessel_count_total": 2021
+ },
+ {
+  "lat": 8.607068203,
+  "lon": 124.7600253,
+  "portid": "port1366",
+  "portname": "Villanueva",
+  "vessel_count_RoRo": 0,
+  "vessel_count_container": 3,
+  "vessel_count_dry_bulk": 118,
+  "vessel_count_tanker": 110,
+  "vessel_count_total": 259
+ }
+]

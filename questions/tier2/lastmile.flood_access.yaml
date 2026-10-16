@@ -1,0 +1,28 @@
+id: lastmile.flood_access
+version: 1
+tier: 2
+status: planned
+implemented: false
+buyers:
+- distributors
+- e-commerce
+- insurers
+decision: Which delivery areas are flooded or unreachable right now.
+ask:
+  en: Which delivery areas are flooded?
+  fil: Aling mga lugar ang binabaha?
+scope:
+  barangay: PSGC barangay
+cadence: daily after heavy rain
+inputs:
+- sentinel1.grd
+- rainfall
+baseline: rainfall threshold
+metric:
+  primary: iou_vs_reference_flood_extent
+  secondary: []
+ship_when: Flood extent IoU >= 0.6 against UNOSAT/Copernicus EMS reference maps for >= 3 events.
+min_coverage: 0.5
+outputs:
+- web
+notes: Needs a free Copernicus Data Space account (not created by this project). See docs/roadmap.md.

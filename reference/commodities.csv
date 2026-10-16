@@ -1,0 +1,8 @@
+commodity_id,name_en,name_fil,hs_prefixes,portwatch_vessel_class,worldbank_series,store_item
+rice,Rice,Bigas,1006,dry_bulk,rice_thai_5,true
+wheat,Wheat (flour),Trigo (harina),1001,dry_bulk,wheat_us_hrw,true
+sugar,Sugar,Asukal,1701,dry_bulk,sugar_world,true
+cooking_oil,Cooking oil,Mantika,1511;1513,tanker,palm_oil;coconut_oil,true
+fuel,Petroleum fuels,Gasolina/Diesel,2710,tanker,brent,true
+lpg,LPG,LPG,2711,tanker,,true
+feed,Feed grains and meal,Pakain ng hayop,1005;2304,dry_bulk,maize;soybean_meal,false

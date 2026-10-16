@@ -1,0 +1,27 @@
+id: suppliers.activity
+version: 1
+tier: 3
+status: planned
+implemented: false
+buyers:
+- importers
+- procurement
+decision: Is activity in a supplier region normal?
+ask:
+  en: Is my supplier region operating normally?
+  fil: Normal ba ang operasyon sa rehiyon ng supplier ko?
+scope:
+  region: supplier region
+cadence: weekly
+inputs:
+- sentinel5p.no2
+- viirs.nightlights
+baseline: seasonal mean
+metric:
+  primary: correlation_with_official_output
+  secondary: []
+ship_when: Correlation >= 0.6 with official industrial output releases.
+min_coverage: 0.5
+outputs:
+- web
+notes: Needs free NASA Earthdata / Copernicus accounts. See docs/roadmap.md.

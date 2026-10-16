@@ -1,0 +1,28 @@
+id: staples.arrivals
+version: 1
+tier: 1
+status: experimental
+buyers:
+- traders
+- millers
+- distributors
+decision: Buy forward or wait; build or draw down inventory.
+ask:
+  en: Are grain, sugar and fuel cargoes arriving at a normal pace?
+  fil: Normal ba ang dating ng mga kargamento ng butil, asukal at gasolina?
+scope:
+  vessel_class: dry_bulk | tanker
+  port: PH or key port id
+cadence: daily
+inputs:
+- portwatch.daily_ports
+baseline: same 28 days a year earlier
+metric:
+  primary: mape_vs_psa_monthly
+  secondary: []
+ship_when: Monthly totals correlate with PSA import statistics (>= 0.7) over >= 24 months.
+min_coverage: 0.5
+outputs:
+- web
+- feed
+notes: Backward-looking nowcast by vessel class. A forward 30-day pipeline needs live AIS voyage data.

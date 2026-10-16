@@ -1,0 +1,9 @@
+route_id,name,from_port,to_port,from_lat,from_lon,to_lat,to_lon,via,serves_regions,notes
+batangas-calapan,Batangas - Calapan,Batangas Pier,Calapan,13.7565,121.0394,13.4115,121.1819,,MIMAROPA;CALABARZON,Main Luzon-Mindoro RoRo link; gateway to MIMAROPA
+matnog-allen,Matnog - Allen,Matnog,Allen,12.5833,124.0833,12.5000,124.2833,,Bicol;Eastern Visayas,Luzon-Samar link across San Bernardino Strait; Pan-Philippine Highway
+liloan-lipata,Liloan - Lipata (Surigao),Liloan,Lipata (Surigao),10.1500,125.1167,9.8000,125.4667,,Eastern Visayas;Caraga,Leyte-Mindanao link across Surigao Strait
+cebu-tagbilaran,Cebu - Tagbilaran,Cebu City,Tagbilaran,10.2950,123.9100,9.6500,123.8556,,Central Visayas,Cebu-Bohol
+cebu-ormoc,Cebu - Ormoc,Cebu City,Ormoc,10.3030,123.9060,11.0060,124.6025,10.7:124.2,Central Visayas;Eastern Visayas,Cebu-Leyte
+iloilo-bacolod,Iloilo - Bacolod,Iloilo City,Bacolod (Banago),10.6980,122.5700,10.6700,122.9400,10.78:122.75,Western Visayas,Panay-Negros across Guimaras Strait
+dapitan-dumaguete,Dapitan - Dumaguete,Dapitan,Dumaguete,8.6550,123.4250,9.3000,123.3100,,Zamboanga Peninsula;Central Visayas,Mindanao-Negros Oriental
+roxas-caticlan,Roxas (Mindoro) - Caticlan,Roxas,Caticlan,12.5900,121.5200,11.9200,121.9500,,MIMAROPA;Western Visayas,Mindoro-Panay (Boracay gateway)

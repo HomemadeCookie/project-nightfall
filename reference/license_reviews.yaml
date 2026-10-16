@@ -1,0 +1,39 @@
+# Commercial-use review register. The publish gate treats a source as cleared for commercial
+# output only if its licence flags allow it, or an entry here sets `approved: true` with evidence.
+# Keep entries honest: "pending" is the default for anything not verified in writing.
+eia:
+  approved: true
+  basis: "US government work, public domain."
+frankfurter:
+  approved: true
+  basis: "ECB reference rates; reuse with attribution."
+worldbank:
+  approved: true
+  basis: "CC BY 4.0 (World Bank Open Data terms)."
+ibtracs:
+  approved: true
+  basis: "NOAA/NCEI data, public domain."
+adsb_lol:
+  approved: true
+  basis: "ODbL 1.0. Attribution required; share-alike applies to derived databases."
+gdelt:
+  approved: true
+  basis: "Free to use with attribution; we store headlines and links only."
+portwatch:
+  approved: false
+  action: "Confirm IMF PortWatch terms of use allow commercial redistribution of derived indicators; ask portwatch@imf.org."
+gdacs:
+  approved: false
+  action: "Confirm GDACS (EC JRC / UN OCHA) reuse terms for commercial products."
+da_prices:
+  approved: false
+  action: "RA 8293 s.176 requires the agency's prior approval to exploit government works for profit. Request written permission from DA-AMAS."
+news_rss:
+  approved: false
+  action: "Headlines/links only. Confirm each publisher's terms before commercial use; prefer licensed feeds."
+open_meteo:
+  approved: false
+  action: "Free API is non-commercial only. Buy a commercial plan or switch to ECMWF/NOAA open data (docs/adr/0003)."
+aisstream:
+  approved: false
+  action: "Check AISStream.io terms for commercial use of derived products; a free key is for evaluation."

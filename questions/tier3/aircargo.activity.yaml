@@ -1,0 +1,25 @@
+id: aircargo.activity
+version: 1
+tier: 3
+status: unvalidated
+buyers:
+- forwarders
+- exporters
+decision: Gauge air-freight capacity into Manila, Clark and Cebu.
+ask:
+  en: Is freighter traffic near Philippine airports normal?
+  fil: Normal ba ang dami ng cargo plane sa mga paliparan?
+scope:
+  airport: MNL | CRK | CEB
+cadence: hourly snapshots
+inputs:
+- adsb_lol.aircraft_snapshot
+baseline: 28-day mean
+metric:
+  primary: correlation_with_caap_cargo_stats
+  secondary: []
+ship_when: '>= 14 days of history, then correlation with official cargo statistics >= 0.6.'
+min_coverage: 0.5
+outputs:
+- web
+notes: Hourly snapshots undercount; trend signal only.

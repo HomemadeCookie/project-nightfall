@@ -1,0 +1,28 @@
+id: ports.pressure
+version: 1
+tier: 1
+status: experimental
+buyers:
+- importers
+- forwarders
+- distributors
+decision: Book trucks earlier, reroute between Manila, Batangas and Subic, avoid demurrage.
+ask:
+  en: Is this port busier or quieter than normal, and what does next week look like?
+  fil: Mas abala ba o mas tahimik ang pantalan kaysa karaniwan?
+scope:
+  port: key port id (MNL, BTG, SBM, CEB, DVO, CGY, GES, ILO)
+cadence: daily
+inputs:
+- portwatch.daily_ports
+baseline: repeat last week's calls
+metric:
+  primary: mae_calls_next_7d
+  secondary: []
+ship_when: Forecast beats 'repeat last week' by >= 5% MAE over >= 26 weekly origins at that port.
+min_coverage: 0.4
+outputs:
+- web
+- feed
+notes: v1 measures vessel-call volume. Berth wait time needs live AIS (collectors/ais.py, needs a free
+  AISStream key).

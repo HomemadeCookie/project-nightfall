@@ -1,0 +1,18 @@
+region_code,psgc,name,short,lat,lon,primary_port_id,ferry_route_ids
+NCR,1300000000,National Capital Region,Metro Manila,14.60,121.00,MNL,
+CAR,1400000000,Cordillera Administrative Region,Cordillera,17.00,121.00,SBM,
+I,0100000000,Ilocos Region,Ilocos,17.57,120.39,SBM,
+II,0200000000,Cagayan Valley,Cagayan Valley,17.61,121.73,SBM,
+III,0300000000,Central Luzon,Central Luzon,15.48,120.60,SBM,
+IVA,0400000000,CALABARZON,CALABARZON,14.10,121.40,BTG,
+MIMAROPA,1700000000,MIMAROPA Region,MIMAROPA,12.90,121.10,BTG,batangas-calapan;roxas-caticlan
+V,0500000000,Bicol Region,Bicol,13.42,123.41,MNL,matnog-allen
+VI,0600000000,Western Visayas,Western Visayas,11.00,122.55,ILO,iloilo-bacolod;roxas-caticlan
+VII,0700000000,Central Visayas,Central Visayas,10.30,123.90,CEB,cebu-tagbilaran;cebu-ormoc;dapitan-dumaguete
+VIII,0800000000,Eastern Visayas,Eastern Visayas,11.25,125.00,OMC,matnog-allen;liloan-lipata;cebu-ormoc
+IX,0900000000,Zamboanga Peninsula,Zamboanga Peninsula,8.20,123.30,ZAM,dapitan-dumaguete
+X,1000000000,Northern Mindanao,Northern Mindanao,8.40,124.60,CGY,
+XI,1100000000,Davao Region,Davao,7.20,125.80,DVO,
+XII,1200000000,SOCCSKSARGEN,SOCCSKSARGEN,6.50,124.80,GES,
+XIII,1600000000,Caraga,Caraga,8.90,125.80,CGY,liloan-lipata
+BARMM,1900000000,Bangsamoro Autonomous Region in Muslim Mindanao,BARMM,7.20,124.20,ZAM,
