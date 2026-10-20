@@ -10,6 +10,19 @@ uv run nightfall build                 # stage + answers + dist/
 cd ../apps/web && npm ci && npm run dev
 ```
 
+Flood squares are answered on every build (storm track, or a mask if you have placed one under
+`$NIGHTFALL_LAKE/flood_masks/<chip_id>/<item_id>.npy`). TerraMind itself is a separate step and is
+not installed with the default environment:
+
+```bash
+# stack.npz must contain s2 (4,12,H,W), s1 (4,2,H,W), dem (H,W)
+uv run nightfall flood-infer --stack stack.npz --config terramind_flood.yaml --checkpoint model.pt --out mask.npy
+uv run nightfall backtest --only lastmile.flood_access
+```
+
+Reference masks for that backtest are `eval/flood_reference/<event>.npz` with arrays `pred` and `ref`.
+None are shipped yet, so the satellite call stays withheld.
+
 ## First-time history (needed for honest backtests)
 ```bash
 uv run nightfall ingest eia frankfurter portwatch --lookback-days 1100

@@ -21,6 +21,17 @@ def cell(lat: float, lon: float, res: int = 7) -> str:
     return h3.latlng_to_cell(lat, lon, res)
 
 
+def square_bounds(lat: float, lon: float, km: float) -> tuple[float, float, float, float]:
+    """West, south, east, north of a square centred on (lat, lon).
+
+    Latitude uses 110.574 km per degree. Longitude shrinks with latitude.
+    """
+    half = km / 2
+    dlat = half / 110.574
+    dlon = half / (111.320 * math.cos(math.radians(lat)))
+    return (round(lon - dlon, 5), round(lat - dlat, 5), round(lon + dlon, 5), round(lat + dlat, 5))
+
+
 def point_in_polygon(pt: Point, ring: Sequence[Point]) -> bool:
     """Ray casting on (lat, lon) pairs. Fine for small geofences, not for the antimeridian."""
     lat, lon = pt

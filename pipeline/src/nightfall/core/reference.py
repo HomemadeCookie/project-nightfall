@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import csv
+import json
 import os
 from functools import cache
 from pathlib import Path
 
-from nightfall.core.geo import sample_polyline
+from nightfall.core.geo import cell, sample_polyline, square_bounds
 
 
 def reference_dir() -> Path:
@@ -21,6 +22,32 @@ def reference_dir() -> Path:
 def read_csv(name: str) -> tuple[dict[str, str], ...]:
     with open(reference_dir() / name, newline="", encoding="utf-8") as fh:
         return tuple(csv.DictReader(fh))
+
+
+def flood_chips() -> list[dict]:
+    """Watch squares for flood access. Each square is an anchor, not a barangay boundary."""
+    raw = json.loads((reference_dir() / "flood_chips.json").read_text(encoding="utf-8"))
+    km = float(raw["chip_km"])
+    chips = []
+    for c in raw["chips"]:
+        lat, lon = float(c["lat"]), float(c["lon"])
+        west, south, east, north = square_bounds(lat, lon, km)
+        chips.append(
+            {
+                **c,
+                "lat": lat,
+                "lon": lon,
+                "chip_km": km,
+                "province": raw["province"],
+                "region_code": raw["region_code"],
+                "west": west,
+                "south": south,
+                "east": east,
+                "north": north,
+                "h3": cell(lat, lon, 8),
+            }
+        )
+    return chips
 
 
 def ports() -> list[dict]:

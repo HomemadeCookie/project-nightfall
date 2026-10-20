@@ -9,7 +9,7 @@ Everything below is excluded on purpose. Nothing here is faked in the product.
 | Suspension ground truth | Turns the ferry ladder into a calibrated probability | Collect PCG/MARINA/operator notices; `events` already extracts candidates | ₱0 |
 | Fuel ground truth | Validates `fuel.next_week` | `nightfall events --append-ground-truth` runs weekly; need 8+ confirmed adjustments (review each row) | ₱0 |
 | Regional prices outside NCR | Store-level advice outside Metro Manila | No free machine-readable source found. Candidates: PSA OpenSTAT (blocks scripted access), DA regional bulletins | ₱0 |
-| `lastmile.flood_access` | Which delivery areas are flooded | Sentinel-1 change detection; free Copernicus Data Space account (not created by this project) | ₱0 |
+| `lastmile.flood_access` scoring | Turn the satellite fraction into a flood call | Three UNOSAT or Copernicus EMS floods with IoU ≥ 0.6; TerraMind weights only for `nightfall flood-infer` | ₱0 |
 | `suppliers.activity` | Supplier-region pulse | Sentinel-5P NO2 + VIIRS night lights; free NASA/Copernicus accounts | ₱0 |
 | Messenger channel | Where most store owners actually are | Meta app review + business verification; Telegram works today | ₱0 |
 | Licence clearances | Selling anything | Written permission per `reference/license_reviews.yaml` (DA, IMF PortWatch, GDACS, AISStream) | ₱0, but needs people |

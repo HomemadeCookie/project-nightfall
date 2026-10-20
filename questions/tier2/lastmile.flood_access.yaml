@@ -1,22 +1,23 @@
 id: lastmile.flood_access
 version: 1
 tier: 2
-status: planned
-implemented: false
+status: unvalidated
+implemented: true
 buyers:
 - distributors
 - e-commerce
 - insurers
-decision: Which delivery areas are flooded or unreachable right now.
+decision: Which watched squares in Pampanga are flooded, or likely to flood because a storm is over them.
 ask:
-  en: Which delivery areas are flooded?
-  fil: Aling mga lugar ang binabaha?
+  en: Which delivery squares are flooded?
+  fil: Aling mga parisukat ang binabaha?
 scope:
-  barangay: PSGC barangay
-cadence: daily after heavy rain
+  chip: 2.56 km square anchored on a Pampanga town
+cadence: daily catalog search; a storm writes a trigger for the new satellite pass
 inputs:
-- sentinel1.grd
-- rainfall
+- planetary_stac.scenes
+- gdacs
+- terramind.flood_mask
 baseline: rainfall threshold
 metric:
   primary: iou_vs_reference_flood_extent
@@ -25,4 +26,8 @@ ship_when: Flood extent IoU >= 0.6 against UNOSAT/Copernicus EMS reference maps 
 min_coverage: 0.5
 outputs:
 - web
-notes: Needs a free Copernicus Data Space account (not created by this project). See docs/roadmap.md.
+notes: >
+  Squares are town-centre anchors, not official barangay boundaries. A storm track may say
+  "likely" before any satellite pass. A TerraMind fraction is shown as unvalidated and is not
+  a flood call until ship_when is met. Pixels are not stored in the raw lake. See
+  docs/adr/0008-flood-chips.md.

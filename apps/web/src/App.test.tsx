@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { App, routeFromHash } from "./App";
 import { LangProvider } from "./i18n";
-import { answers, bundle, manifest } from "./test-fixtures";
+import { answer, answers, bundle, manifest } from "./test-fixtures";
 
 function mockFetch(overrides: Record<string, unknown> = {}) {
   const files: Record<string, unknown> = {
@@ -94,6 +94,30 @@ describe("App", () => {
       fireEvent(window, new HashChangeEvent("hashchange"));
       expect(await screen.findByRole("heading", { level: 2, name: heading })).toBeInTheDocument();
     }
+  });
+
+  it("shows a flood square on the storms page", async () => {
+    mockFetch({
+      "answers/index.json": [
+        ...answers,
+        answer({
+          question_id: "lastmile.flood_access",
+          verdict: "likely",
+          scope: { chip: "pampanga-lubao" },
+          text: {
+            en: "LOCAL is over Lubao. Flooding is likely.",
+            fil: "Nasa ibabaw ng Lubao ang LOCAL.",
+          },
+          value: { name: "Lubao", lat: 14.94, lon: 120.6 },
+        }),
+      ],
+    });
+    renderApp();
+    await screen.findByText("English text for retail.stock_up");
+    window.location.hash = "#/storms";
+    fireEvent(window, new HashChangeEvent("hashchange"));
+    expect(await screen.findByRole("heading", { level: 3, name: "Flood squares" })).toBeInTheDocument();
+    expect(screen.getByText("LOCAL is over Lubao. Flooding is likely.")).toBeInTheDocument();
   });
 
   it("marks answers that are for research use only", async () => {

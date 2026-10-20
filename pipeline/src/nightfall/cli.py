@@ -106,6 +106,7 @@ def cmd_backtest(args: argparse.Namespace) -> int:
         "ports.pressure": backtests.backtest_ports,
         "staples.price_direction": backtests.backtest_prices,
         "fuel.next_week": backtests.backtest_fuel,
+        "lastmile.flood_access": backtests.backtest_flood,
     }
     for qid, fn in jobs.items():
         if args.only and qid not in args.only:
@@ -122,6 +123,10 @@ def cmd_publish(args: argparse.Namespace) -> int:
     from nightfall.publish.bake import bake
 
     lake, ctx = _context(args)
+    from nightfall.indicators.flood import sync_triggers
+
+    n = sync_triggers(lake, ctx)
+    print(f"flood triggers {n}")
     result = run_all(ctx)
     _persist_answers(lake, result, ctx.as_of)
     manifest = bake(lake, ctx, result, dist_root(), mode=args.mode)
@@ -166,6 +171,26 @@ def cmd_exposure(args: argparse.Namespace) -> int:
     _, ctx = _context(args)
     for a in run(ctx, sites=load_sites(Path(args.sites))):
         print(f"[{a.verdict}] {a.text.en}")
+    return 0
+
+
+def cmd_flood_infer(args: argparse.Namespace) -> int:
+    from pathlib import Path
+
+    import numpy as np
+
+    from nightfall.indicators.terramind import TerraMindUnavailable, build_input, predict
+
+    data = np.load(args.stack)
+    try:
+        mask = predict(build_input(data["s2"], data["s1"], data["dem"]), args.config, args.checkpoint)
+    except TerraMindUnavailable as exc:
+        print(exc, file=sys.stderr)
+        return 2
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    np.save(out, mask)
+    print(f"wrote {out} {mask.shape}")
     return 0
 
 
@@ -299,6 +324,12 @@ def build_parser() -> argparse.ArgumentParser:
     exp.add_argument("--sites", required=True)
     exp.add_argument("--as-of")
     exp.set_defaults(func=cmd_exposure)
+    inf = sub.add_parser("flood-infer", help="run TerraMind on one chip stack (.npz with s2, s1, dem)")
+    inf.add_argument("--stack", required=True)
+    inf.add_argument("--config", required=True, help="TerraTorch yaml for TerraMind-base-Flood")
+    inf.add_argument("--checkpoint", required=True)
+    inf.add_argument("--out", required=True, help="where to write the uint8 class mask (.npy)")
+    inf.set_defaults(func=cmd_flood_infer)
     con = sub.add_parser("contracts", help="write JSON Schemas to contracts/")
     con.set_defaults(func=cmd_contracts)
     return p
