@@ -22,7 +22,8 @@ Matnog ferry stop sailing? should I stock up this week?*) and says how far each 
 | `staples.price_direction`: NCR staple prices over 4 weeks | distributors, retailers | forecast publishes only for items that beat trend baselines in walk-forward tests |
 | `retail.stock_up`: plain-language advice per region (English and Filipino) | sari-sari stores, via distributors | rules over the above; inherits their limits |
 | `lanes.upstream_disruption`, `typhoon.asset_exposure`, `aircargo.activity` | procurement, insurers | experimental |
-| `lastmile.flood_access`, `suppliers.activity` | | planned (need free satellite accounts) |
+| `lastmile.flood_access`: which Pampanga squares are flooded | distributors, e-commerce, insurers | unvalidated; a storm can say "likely", a satellite fraction is not a call until 3 scored floods |
+| `suppliers.activity` | | planned (needs free satellite accounts) |
 
 Specs live in [`questions/`](questions/): the decision each one changes, the baseline it must beat, and the
 rule for when it may publish.
@@ -82,6 +83,7 @@ infra/        lake persistence + health-check scripts used by the workflows
 | adsb.lol | freighter traffic near airports | no | yes (ODbL) |
 | AISStream (optional) | berth wait times | free key | unclear |
 | Philippine news RSS, GDELT | event extraction, ground truth | no | headlines and links only |
+| Planetary Computer STAC | Sentinel-1 RTC, Sentinel-2, Copernicus DEM catalogs for flood squares | no | yes (Copernicus licence, attribution) |
 
 ## Limits worth knowing
 
@@ -89,4 +91,5 @@ infra/        lake persistence + health-check scripts used by the workflows
 - Port data measures vessel-call **volume**, not berth wait, until AIS is switched on.
 - Fuel is modelled from NY Harbor spot prices as a stand-in for Singapore benchmarks, with no fitted coefficients.
 - Ferry risk is a transparent heuristic. It is not a probability and has not been validated against real notices.
+- Flood squares are 2.6 km town-centre anchors in Pampanga, not official barangay boundaries. A satellite fraction stays unvalidated until three reference floods score IoU ≥ 0.6. See [`docs/adr/0008-flood-chips.md`](docs/adr/0008-flood-chips.md).
 - Free-tier hosting is fine for this scale; see the runbook for the specific limits.

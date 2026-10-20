@@ -34,6 +34,7 @@ ASOF_COLUMN: dict[str, tuple[str, str]] = {
     "aircraft_obs": ("observed_at", "ts"),
     "ais_positions": ("observed_at", "ts"),
     "ais_static": ("observed_at", "ts"),
+    "satellite_scenes": ("available_on", "ts"),
 }
 UNVERSIONED = {"port_ref"}  # reference-like tables with no as-of column
 

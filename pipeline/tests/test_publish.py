@@ -87,7 +87,8 @@ def test_commercial_mode_drops_blocked_answers_and_explains_why(baked, tmp_path)
     out = tmp_path / "dist"
     index = read(out / "answers" / "index.json")
     assert index and all(a["commercial_ok"] for a in index)
-    # Only questions whose every input is cleared survive: eia/frankfurter (fuel) and adsb.lol (air cargo).
+    # Fuel and air cargo are cleared on their own sources. Flood rows cite GDACS, which is still
+    # unclear for commercial use, so they are blocked with everything else.
     assert {a["question_id"] for a in index} == {"fuel.next_week", "aircargo.activity"}
     blocked = read(out / "blocked.json")
     assert m["counts"]["blocked"] == len(blocked) > 0
@@ -105,8 +106,8 @@ def test_manifest_lists_sources_questions_and_freshness(baked, tmp_path):
     assert srcs["gdelt"]["fresh"]["status"] == "missing"  # nothing ingested in this lake
     qs = {q["id"]: q for q in m["questions"]}
     assert (
-        qs["lastmile.flood_access"]["model_status"] == "planned"
-        and not qs["lastmile.flood_access"]["implemented"]
+        qs["lastmile.flood_access"]["model_status"] == "unvalidated"
+        and qs["lastmile.flood_access"]["implemented"]
     )
     assert qs["fuel.next_week"]["n_answers"] == 2 and qs["fuel.next_week"]["error"] is None
     assert read(tmp_path / "dist" / "manifest.json")["generated_at"] == "2026-10-16T12:00:00Z"

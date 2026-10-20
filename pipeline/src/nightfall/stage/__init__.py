@@ -9,6 +9,7 @@ import pyarrow as pa
 from nightfall.core.lake import Lake
 from nightfall.stage.markets import stage_da_weekly, stage_eia, stage_fx, stage_pink_sheet
 from nightfall.stage.ports import stage_ports
+from nightfall.stage.satellite import stage_satellite_scenes
 from nightfall.stage.text import stage_aircraft, stage_ais, stage_news
 from nightfall.stage.weather import stage_gdacs, stage_ibtracs, stage_route_forecast
 
@@ -24,6 +25,7 @@ STAGERS: list[Callable[[Lake], dict[str, pa.Table]]] = [
     stage_news,
     stage_aircraft,
     stage_ais,
+    stage_satellite_scenes,
 ]
 
 

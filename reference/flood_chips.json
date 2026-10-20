@@ -1,0 +1,12 @@
+{
+  "province": "Pampanga",
+  "region_code": "III",
+  "chip_km": 2.56,
+  "note": "Each square is centred on a town. It is not the official barangay boundary.",
+  "chips": [
+    {"chip_id": "pampanga-lubao", "name": "Lubao", "lat": 14.9403, "lon": 120.601},
+    {"chip_id": "pampanga-guagua", "name": "Guagua", "lat": 14.9711, "lon": 120.6336},
+    {"chip_id": "pampanga-masantol", "name": "Masantol", "lat": 14.8956, "lon": 120.71},
+    {"chip_id": "pampanga-macabebe", "name": "Macabebe", "lat": 14.9085, "lon": 120.7156}
+  ]
+}

@@ -9,6 +9,7 @@ from nightfall.answers.common import key_ports
 from nightfall.core.context import Context
 from nightfall.core.reference import reference_dir
 from nightfall.eval.metrics import accuracy, balanced_accuracy, mae, majority
+from nightfall.indicators.flood import score_flood_references
 from nightfall.indicators.fuel import fuel_signal
 from nightfall.indicators.ports import calls_series, forecast_next_week
 from nightfall.indicators.prices import HORIZON_WEEKS, direction, pct, weekly_prices
@@ -170,3 +171,10 @@ def backtest_fuel(ctx: Context) -> dict:
         "balanced_accuracy": round(balanced_accuracy(actual_dir, pred_dir), 3),
         "accuracy": round(accuracy(actual_dir, pred_dir), 3),
     }
+
+
+def backtest_flood(ctx: Context) -> dict:
+    """IoU of archived flood masks. No reference files means the satellite call stays withheld."""
+    body = score_flood_references(reference_dir().parent / "eval" / "flood_reference")
+    body["as_of"] = ctx.as_of.strftime("%Y-%m-%dT%H:%M:%SZ")
+    return body

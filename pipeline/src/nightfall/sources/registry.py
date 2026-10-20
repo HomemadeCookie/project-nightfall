@@ -28,6 +28,7 @@ def _load() -> None:
     # Importing the modules runs their @register decorators.
     from nightfall.sources.flights import adsb_lol  # noqa: F401
     from nightfall.sources.markets import da_prices, eia, frankfurter, worldbank  # noqa: F401
+    from nightfall.sources.satellite import planetary_stac  # noqa: F401
     from nightfall.sources.ships import aisstream, portwatch  # noqa: F401
     from nightfall.sources.text import gdelt, rss  # noqa: F401
     from nightfall.sources.weather import gdacs, ibtracs, noaa_gfs, open_meteo  # noqa: F401

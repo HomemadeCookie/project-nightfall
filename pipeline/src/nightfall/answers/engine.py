@@ -20,6 +20,7 @@ MODULES = [
     "staples_price_direction",
     "lanes_upstream",
     "typhoon_exposure",
+    "flood_access",
     "aircargo",
     "retail_stock_up",
 ]
@@ -65,8 +66,9 @@ def run_all(ctx: Context, only: set[str] | None = None) -> RunResult:
             result.errors[qid] = traceback.format_exc(limit=4)
             continue
         floor = specs[qid].min_coverage
+        withheld = {"insufficient_data", "collecting_data", "no_call", "unvalidated"}
         for a in answers:
-            if a.coverage < floor and a.verdict not in ("insufficient_data", "collecting_data", "no_call"):
+            if a.coverage < floor and a.verdict not in withheld:
                 a.verdict, a.confidence = "insufficient_data", "none"
         result.answers[qid] = answers
     return result

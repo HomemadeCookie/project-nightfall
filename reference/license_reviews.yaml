@@ -37,3 +37,6 @@ open_meteo:
 aisstream:
   approved: false
   action: "Check AISStream.io terms for commercial use of derived products; a free key is for evaluation."
+planetary_stac:
+  approved: true
+  basis: "Copernicus Sentinel and Copernicus DEM are free for commercial use with attribution. Planetary Computer is the catalog; stored records are scene ids and unsigned item URLs."
